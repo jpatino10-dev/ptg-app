@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
 
 export default async function AdminDashboard() {
   const supabase = await createClient()
@@ -37,11 +38,11 @@ export default async function AdminDashboard() {
             { title: 'Players', desc: 'View and manage player profiles', href: '/admin/players' },
             { title: 'Coaches', desc: 'Coach schedules and payments', href: '/admin/coaches' },
             { title: 'Payments', desc: 'Revenue tracking and history', href: '/admin/payments' },
-          ].map(({ title, desc }) => (
-            <div key={title} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 cursor-pointer hover:border-[#cee800] transition">
+          ].map(({ title, desc, href }) => (
+            <Link key={title} href={href} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 hover:border-[#cee800] transition block">
               <h3 className="font-black text-lg">{title}</h3>
               <p className="text-zinc-400 text-sm mt-1">{desc}</p>
-            </div>
+            </Link>
           ))}
         </div>
       </div>
