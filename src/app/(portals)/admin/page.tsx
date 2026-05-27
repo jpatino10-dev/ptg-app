@@ -12,7 +12,7 @@ export default async function AdminDashboard() {
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <Image src="/logo.jpg" alt="PTG" width={40} height={40} className="rounded-lg" />
+            <Image src="/logo.png" alt="PTG" width={40} height={40} />
             <h1 className="text-2xl font-black text-[#cee800] tracking-widest">PTG ADMIN</h1>
           </div>
           <span className="text-zinc-400 text-sm">{user.email}</span>

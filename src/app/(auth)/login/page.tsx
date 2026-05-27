@@ -37,7 +37,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-black flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-8">
-          <Image src="/logo.jpg" alt="Patiño Training Grounds" width={140} height={140} className="rounded-xl" />
+          <Image src="/logo.png" alt="Patiño Training Grounds" width={140} height={140} />
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
