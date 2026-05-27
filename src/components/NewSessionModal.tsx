@@ -19,15 +19,16 @@ const HOURS = [
 
 type Props = {
   defaultDate?: string
+  defaultHour?: string
   onClose: () => void
   onCreated: () => void
 }
 
-export default function NewSessionModal({ defaultDate, onClose, onCreated }: Props) {
+export default function NewSessionModal({ defaultDate, defaultHour, onClose, onCreated }: Props) {
   const [coach, setCoach]           = useState(COACHES[0])
   const [type, setType]             = useState('individual')
   const [date, setDate]             = useState(defaultDate || new Date().toISOString().split('T')[0])
-  const [hour, setHour]             = useState('4:00 PM')
+  const [hour, setHour]             = useState(defaultHour || '4:00 PM')
   const [playerName, setPlayerName] = useState('')
   const [notes, setNotes]           = useState('')
   const [recurring, setRecurring]   = useState(false)
