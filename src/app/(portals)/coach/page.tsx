@@ -16,7 +16,7 @@ export default async function CoachDashboard() {
     <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-black text-lime-400 tracking-widest">COACH PORTAL</h1>
+          <h1 className="text-2xl font-black text-[#cee800] tracking-widest">COACH PORTAL</h1>
           <span className="text-zinc-400 text-sm">{profile?.full_name || user.email}</span>
         </div>
 
@@ -26,7 +26,7 @@ export default async function CoachDashboard() {
             { title: 'My Players', desc: 'Player roster and notes' },
             { title: 'Payments', desc: 'Your payment history from PTG' },
           ].map(({ title, desc }) => (
-            <div key={title} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 cursor-pointer hover:border-lime-400 transition">
+            <div key={title} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 cursor-pointer hover:border-[#cee800] transition">
               <h3 className="font-black text-lg">{title}</h3>
               <p className="text-zinc-400 text-sm mt-1">{desc}</p>
             </div>

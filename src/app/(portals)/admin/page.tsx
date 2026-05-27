@@ -13,7 +13,7 @@ export default async function AdminDashboard() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <Image src="/logo.jpg" alt="PTG" width={40} height={40} className="rounded-lg" />
-            <h1 className="text-2xl font-black text-lime-400 tracking-widest">PTG ADMIN</h1>
+            <h1 className="text-2xl font-black text-[#cee800] tracking-widest">PTG ADMIN</h1>
           </div>
           <span className="text-zinc-400 text-sm">{user.email}</span>
         </div>
@@ -38,7 +38,7 @@ export default async function AdminDashboard() {
             { title: 'Coaches', desc: 'Coach schedules and payments', href: '/admin/coaches' },
             { title: 'Payments', desc: 'Revenue tracking and history', href: '/admin/payments' },
           ].map(({ title, desc }) => (
-            <div key={title} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 cursor-pointer hover:border-lime-400 transition">
+            <div key={title} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 cursor-pointer hover:border-[#cee800] transition">
               <h3 className="font-black text-lg">{title}</h3>
               <p className="text-zinc-400 text-sm mt-1">{desc}</p>
             </div>
