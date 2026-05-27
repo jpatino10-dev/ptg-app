@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Image from 'next/image'
 
 export default async function AdminDashboard() {
   const supabase = await createClient()
@@ -10,7 +11,10 @@ export default async function AdminDashboard() {
     <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-black text-lime-400 tracking-widest">PTG ADMIN</h1>
+          <div className="flex items-center gap-3">
+            <Image src="/logo.jpg" alt="PTG" width={40} height={40} className="rounded-lg" />
+            <h1 className="text-2xl font-black text-lime-400 tracking-widest">PTG ADMIN</h1>
+          </div>
           <span className="text-zinc-400 text-sm">{user.email}</span>
         </div>
 

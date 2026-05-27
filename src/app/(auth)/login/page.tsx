@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
@@ -35,9 +36,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-black text-lime-400 tracking-widest">PTG</h1>
-          <p className="text-zinc-400 text-sm mt-1">Patiño Training Grounds</p>
+        <div className="flex justify-center mb-8">
+          <Image src="/logo.jpg" alt="Patiño Training Grounds" width={140} height={140} className="rounded-xl" />
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
