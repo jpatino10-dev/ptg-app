@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import NewSessionModal from '@/components/NewSessionModal'
 
 const SESSION_COLORS: Record<string, string> = {
   individual: '#cee800',
@@ -48,6 +49,8 @@ export default function CalendarPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Booking | null>(null)
+  const [showNewSession, setShowNewSession] = useState(false)
+  const [newSessionDate, setNewSessionDate] = useState<string | undefined>()
 
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart)
@@ -96,6 +99,12 @@ export default function CalendarPage() {
             <h1 className="text-2xl font-black text-[#cee800] tracking-widest">CALENDAR</h1>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setNewSessionDate(undefined); setShowNewSession(true) }}
+              className="px-4 py-1.5 bg-[#cee800] text-black font-black text-sm rounded-lg hover:bg-[#d4f030] transition"
+            >
+              + New Session
+            </button>
             <button onClick={prevWeek} className="px-3 py-1.5 bg-zinc-900 border border-zinc-700 rounded-lg hover:border-[#cee800] text-sm transition">←</button>
             <span className="text-sm font-semibold w-40 text-center">
               {MONTHS[weekDays[0].getMonth()]} {weekDays[0].getDate()} – {MONTHS[weekDays[6].getMonth()]} {weekDays[6].getDate()}, {weekDays[6].getFullYear()}
@@ -111,7 +120,11 @@ export default function CalendarPage() {
             const isToday = fmt(day) === todayStr
             const dayBookings = bookingsForDay(day)
             return (
-              <div key={fmt(day)} className={`min-h-48 bg-zinc-900 border rounded-xl p-2 ${isToday ? 'border-[#cee800]' : 'border-zinc-800'}`}>
+              <div
+                key={fmt(day)}
+                className={`min-h-48 bg-zinc-900 border rounded-xl p-2 cursor-pointer hover:border-zinc-600 transition ${isToday ? 'border-[#cee800]' : 'border-zinc-800'}`}
+                onClick={() => { setNewSessionDate(fmt(day)); setShowNewSession(true) }}
+              >
                 <div className={`text-xs font-black mb-2 ${isToday ? 'text-[#cee800]' : 'text-zinc-400'}`}>
                   <div>{DAYS[day.getDay()]}</div>
                   <div className={`text-lg leading-none ${isToday ? 'text-[#cee800]' : 'text-white'}`}>{day.getDate()}</div>
@@ -123,7 +136,7 @@ export default function CalendarPage() {
                   {dayBookings.map(b => (
                     <button
                       key={b.id}
-                      onClick={() => setSelected(b)}
+                      onClick={e => { e.stopPropagation(); setSelected(b) }}
                       className="w-full text-left rounded-lg px-2 py-1.5 text-xs font-semibold text-black truncate transition hover:opacity-80"
                       style={{ backgroundColor: SESSION_COLORS[b.type] || '#666' }}
                     >
@@ -176,6 +189,18 @@ export default function CalendarPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showNewSession && (
+        <NewSessionModal
+          defaultDate={newSessionDate}
+          onClose={() => setShowNewSession(false)}
+          onCreated={() => {
+            setShowNewSession(false)
+            // Reload bookings for current week
+            setWeekStart(d => new Date(d))
+          }}
+        />
       )}
     </div>
   )
