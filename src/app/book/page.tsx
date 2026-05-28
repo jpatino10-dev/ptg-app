@@ -40,13 +40,14 @@ const FORMATS = [
 ]
 
 const FOCUS_AREAS = [
-  { id: 'ball_mastery', label: 'Ball Mastery', icon: '⚽', desc: 'First touch, close control, confidence on the ball' },
-  { id: 'one_v_one',   label: '1v1 / Dribbling', icon: '🔥', desc: 'Beat defenders, attack space, create chances' },
-  { id: 'finishing',   label: 'Finishing & Shooting', icon: '🎯', desc: 'Finishing, volleys, positioning in front of goal' },
-  { id: 'positional',  label: 'Positional Play', icon: '🧠', desc: 'Decision making, movement, functional training' },
-  { id: 'defending',   label: 'Defending', icon: '🛡️', desc: 'Pressing, positioning, winning the ball back' },
-  { id: 'fitness',     label: 'Speed & Fitness', icon: '💨', desc: 'Acceleration, agility, game fitness' },
-  { id: 'overall',     label: 'Overall Development', icon: '📈', desc: 'Balanced program across all areas' },
+  { id: 'ball_mastery', label: 'Ball Mastery',        icon: '⚽', desc: 'First touch, close control, confidence on the ball' },
+  { id: 'one_v_one',   label: '1v1 / Dribbling',      icon: '🔥', desc: 'Beat defenders, attack space, create chances' },
+  { id: 'passing',     label: 'Passing & Receiving',  icon: '🎯', desc: 'Short, long, switching play and receiving under pressure' },
+  { id: 'finishing',   label: 'Finishing & Shooting', icon: '🥅', desc: 'Finishing, volleys, positioning in front of goal' },
+  { id: 'positional',  label: 'Positional Play',      icon: '🧠', desc: 'Decision making, movement, functional training' },
+  { id: 'defending',   label: 'Defending',             icon: '🛡️', desc: 'Pressing, positioning, winning the ball back' },
+  { id: 'fitness',     label: 'Speed & Fitness',      icon: '💨', desc: 'Acceleration, agility, game fitness' },
+  { id: 'overall',     label: 'Overall Development',  icon: '📈', desc: 'Balanced program across all areas' },
 ]
 
 const AGE_GROUPS = ['U8','U9','U10','U11','U12','U13','U14','U15','U16','U17','U18','Adult']
@@ -57,6 +58,12 @@ const LEVELS = [
   { value: 'ga',           label: 'GA' },
 ]
 const GENDERS = ['Male', 'Female', 'Other / Prefer not to say']
+const STRONG_FEET = [
+  { id: 'right', label: 'Right', icon: '👟' },
+  { id: 'left',  label: 'Left',  icon: '👟' },
+  { id: 'both',  label: 'Both',  icon: '⚡' },
+]
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 const TIME_PREFS = [
   { id: 'morning',   label: 'Morning',   sub: '8am – 12pm', icon: '🌅' },
   { id: 'afternoon', label: 'Afternoon', sub: '12pm – 5pm', icon: '☀️' },
@@ -80,13 +87,13 @@ function BookingFlow() {
   const [groupPlan, setGroupPlan]   = useState<'dropin' | 'monthly' | null>(null)
   const [focusAreas, setFocusAreas] = useState<string[]>([])
   const [player, setPlayer] = useState({
-    name: '', age_group: '', level: '', club: '', gender: '',
+    name: '', age_group: '', level: '', club: '', gender: '', strong_foot: '',
   })
   const [contact, setContact] = useState({
     parent_name: '', email: '', phone: '',
   })
   const [schedule, setSchedule] = useState({
-    preferred_date: '', time_pref: '', notes: '',
+    preferred_days: [] as string[], time_pref: '', notes: '',
   })
 
   const selectedFormat  = FORMATS.find(f => f.id === format)
@@ -104,11 +111,21 @@ function BookingFlow() {
     setFocusAreas(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])
   }
 
+  function toggleDay(day: string) {
+    setSchedule(s => ({
+      ...s,
+      preferred_days: s.preferred_days.includes(day)
+        ? s.preferred_days.filter(d => d !== day)
+        : [...s.preferred_days, day],
+    }))
+  }
+
   function canProceed() {
     if (step === 0) return format !== null && (!isGroup || groupPlan !== null)
     if (step === 1) return focusAreas.length > 0
-    if (step === 2) return player.name.trim() !== '' && player.age_group !== ''
+    if (step === 2) return player.name.trim() !== '' && player.age_group !== '' && player.strong_foot !== ''
     if (step === 3) return contact.parent_name.trim() !== '' && contact.email.trim() !== ''
+    if (step === 4) return schedule.preferred_days.length > 0 && schedule.time_pref !== ''
     return true
   }
 
@@ -126,12 +143,14 @@ function BookingFlow() {
         email: contact.email,
         phone: contact.phone,
         age_group: player.age_group,
-        preferred_date: schedule.preferred_date,
+        preferred_date: schedule.preferred_days.join(', '),
         notes: [
           focusLabel ? `Focus: ${focusLabel}` : '',
-          player.level  ? `Level: ${player.level}` : '',
-          player.club   ? `Club: ${player.club}` : '',
-          player.gender ? `Gender: ${player.gender}` : '',
+          player.level       ? `Level: ${player.level}` : '',
+          player.club        ? `Club: ${player.club}` : '',
+          player.gender      ? `Gender: ${player.gender}` : '',
+          player.strong_foot ? `Strong foot: ${player.strong_foot}` : '',
+          schedule.preferred_days.length ? `Preferred days: ${schedule.preferred_days.join(', ')}` : '',
           schedule.time_pref ? `Preferred time: ${schedule.time_pref}` : '',
           schedule.notes,
         ].filter(Boolean).join(' | '),
@@ -316,6 +335,20 @@ function BookingFlow() {
               </div>
 
               <div>
+                <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Strong Foot *</label>
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  {STRONG_FEET.map(f => (
+                    <button key={f.id} type="button" onClick={() => setPlayer(p => ({ ...p, strong_foot: f.id }))}
+                      className={`py-3 rounded-xl border text-sm font-black transition ${
+                        player.strong_foot === f.id ? 'border-[#cee800] bg-zinc-800 text-white' : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                      }`}>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Club / Team (optional)</label>
                 <input value={player.club} onChange={e => setPlayer(p => ({ ...p, club: e.target.value }))}
                   placeholder="e.g. FC Dallas, Real Colorado, None"
@@ -362,15 +395,27 @@ function BookingFlow() {
 
             <div className="space-y-5 mb-6">
               <div>
-                <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Preferred Date</label>
-                <input type="date" value={schedule.preferred_date}
-                  min={new Date().toISOString().slice(0, 10)}
-                  onChange={e => setSchedule(s => ({ ...s, preferred_date: e.target.value }))}
-                  className="mt-1 w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#cee800]" />
+                <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider mb-2 block">
+                  Preferred Days * <span className="text-zinc-600 normal-case font-normal">(select all that work)</span>
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {DAYS.map(day => (
+                    <button key={day} type="button" onClick={() => toggleDay(day)}
+                      className={`py-2.5 rounded-xl border text-sm font-black transition ${
+                        schedule.preferred_days.includes(day)
+                          ? 'border-[#cee800] bg-zinc-800 text-white'
+                          : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                      }`}>
+                      {day.slice(0, 3)}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
-                <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider mb-2 block">Preferred Time of Day</label>
+                <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider mb-2 block">
+                  Preferred Time of Day *
+                </label>
                 <div className="grid grid-cols-3 gap-2">
                   {TIME_PREFS.map(t => (
                     <button key={t.id} type="button" onClick={() => setSchedule(s => ({ ...s, time_pref: t.id }))}
@@ -431,19 +476,20 @@ function BookingFlow() {
                 {[
                   ['Player', player.name],
                   ['Age Group', player.age_group],
-                  player.level && ['Level', LEVELS.find(l => l.value === player.level)?.label],
-                  player.club && ['Club', player.club],
+                  player.strong_foot ? ['Strong Foot', player.strong_foot.charAt(0).toUpperCase() + player.strong_foot.slice(1)] : null,
+                  player.level ? ['Level', LEVELS.find(l => l.value === player.level)?.label ?? player.level] : null,
+                  player.club ? ['Club', player.club] : null,
                   ['Parent', contact.parent_name],
                   ['Email', contact.email],
-                  contact.phone && ['Phone', contact.phone],
-                  schedule.preferred_date && ['Preferred Date', schedule.preferred_date],
-                  schedule.time_pref && ['Time Pref', TIME_PREFS.find(t => t.id === schedule.time_pref)?.label],
-                ].filter(Boolean).map(([k, v]) => v ? (
-                  <div key={k as string}>
+                  contact.phone ? ['Phone', contact.phone] : null,
+                  schedule.preferred_days.length > 0 ? ['Preferred Days', schedule.preferred_days.map(d => d.slice(0,3)).join(', ')] : null,
+                  schedule.time_pref ? ['Time of Day', TIME_PREFS.find(t => t.id === schedule.time_pref)?.label ?? schedule.time_pref] : null,
+                ].filter((x): x is [string, string] => Array.isArray(x) && !!x[1]).map(([k, v]) => (
+                  <div key={k}>
                     <p className="text-zinc-500 text-xs">{k}</p>
                     <p className="font-semibold text-sm">{v}</p>
                   </div>
-                ) : null)}
+                ))}
               </div>
 
               {/* Price */}
