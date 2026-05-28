@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import InviteCoachForm from '@/components/InviteCoachForm'
 
 const RATES: Record<string, { individual: number; semi: number; group: number }> = {
   aidan:  { individual: 50,  semi: 45, group: 150 },
@@ -43,6 +44,7 @@ export default async function CoachesPage() {
             <Link href="/admin" className="text-zinc-500 hover:text-white text-sm">← Admin</Link>
             <h1 className="text-2xl font-black text-[#cee800] tracking-widest">COACHES</h1>
           </div>
+          <InviteCoachForm />
         </div>
 
         {(!coaches || coaches.length === 0) ? (
