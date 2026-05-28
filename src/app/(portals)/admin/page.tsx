@@ -45,6 +45,7 @@ export default async function AdminDashboard() {
     { count: totalPlayers },
     { count: sessionsThisWeek },
     { data: monthBookings },
+    { count: pendingRequests },
   ] = await Promise.all([
     admin.from('players').select('*', { count: 'exact', head: true }),
     admin.from('bookings')
@@ -56,6 +57,7 @@ export default async function AdminDashboard() {
       .gte('date', month.start)
       .lte('date', month.end)
       .in('status', ['confirmed', 'paid']),
+    admin.from('booking_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
   ])
 
   const revenueThisMonth = (monthBookings || [])
@@ -93,6 +95,7 @@ export default async function AdminDashboard() {
             { title: 'Players', desc: 'View and manage player profiles', href: '/admin/players' },
             { title: 'Coaches', desc: 'Coach schedules and payments', href: '/admin/coaches' },
             { title: 'Payments', desc: 'Revenue tracking and history', href: '/admin/payments' },
+            { title: 'Requests', desc: `Session requests from parents${(pendingRequests ?? 0) > 0 ? ` · ${pendingRequests} pending` : ''}`, href: '/admin/requests' },
           ].map(({ title, desc, href }) => (
             <Link key={title} href={href} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 hover:border-[#cee800] transition block">
               <h3 className="font-black text-lg">{title}</h3>

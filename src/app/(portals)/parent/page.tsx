@@ -95,7 +95,8 @@ export default function ParentDashboard() {
         <div className="grid grid-cols-1 gap-3 mb-6">
           {[
             { title: 'My Bookings', desc: 'View upcoming and past sessions', href: '/parent/bookings' },
-            { title: 'My Players', desc: 'Player profiles and coach notes', href: '/parent/players' },
+            { title: 'My Players', desc: 'Profiles, progress tracking, messages', href: '/parent/players' },
+            { title: 'Request a Session', desc: 'Submit a session request to PTG', href: '/parent/request' },
           ].map(({ title, desc, href }) => (
             <Link key={title} href={href}
               className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 hover:border-[#cee800] transition flex items-center justify-between">

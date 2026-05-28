@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
+
+const SessionReportModal = dynamic(() => import('@/components/SessionReportModal'), { ssr: false })
 
 type Booking = {
   id: string; date: string; hour: string; coach: string; type: string
@@ -14,9 +17,20 @@ const TYPE_COLORS: Record<string, string> = {
 }
 
 export default function ParentBookingsPage() {
-  const [bookings, setBookings] = useState<Booking[]>([])
-  const [loading, setLoading]  = useState(true)
-  const [tab, setTab]          = useState<'upcoming' | 'past'>('upcoming')
+  const [bookings, setBookings]       = useState<Booking[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [tab, setTab]                 = useState<'upcoming' | 'past'>('upcoming')
+  const [viewReport, setViewReport]   = useState<Booking | null>(null)
+  const [reportsExist, setReportsExist] = useState<Set<string>>(new Set())
+
+  // Check which past sessions have reports
+  useEffect(() => {
+    if (bookings.length === 0) return
+    const past = bookings.filter(b => b.date < new Date().toISOString().slice(0, 10))
+    Promise.all(past.map(b =>
+      fetch(`/api/session-reports/${b.id}`).then(r => r.json()).then(d => d ? b.id : null)
+    )).then(ids => setReportsExist(new Set(ids.filter(Boolean) as string[])))
+  }, [bookings])
 
   useEffect(() => {
     fetch('/api/parent/bookings')
@@ -126,6 +140,12 @@ export default function ParentBookingsPage() {
                               : 'bg-zinc-700 text-zinc-400'
                           }`}>{b.status?.replace('_', ' ')}</span>
                           {b.price && <p className="text-sm font-semibold">${b.price}</p>}
+                          {reportsExist.has(b.id) && (
+                            <button onClick={() => setViewReport(b)}
+                              className="text-xs font-bold px-2 py-0.5 rounded-full bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition mt-1 block">
+                              View Report
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -136,6 +156,16 @@ export default function ParentBookingsPage() {
           </div>
         )}
       </div>
+
+      {viewReport && (
+        <SessionReportModal
+          bookingId={viewReport.id}
+          sessionLabel={`${viewReport.client || viewReport.player_name || 'Session'} · ${viewReport.date}`}
+          onClose={() => setViewReport(null)}
+          onSaved={() => {}}
+          readOnly
+        />
+      )}
     </div>
   )
 }
