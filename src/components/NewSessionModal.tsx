@@ -37,6 +37,7 @@ type Props = {
 export default function NewSessionModal({ defaultDate, defaultHour, onClose, onCreated }: Props) {
   const [title, setTitle]           = useState('')
   const [coach, setCoach]           = useState(COACHES[0])
+  const [selectedCoaches, setSelectedCoaches] = useState<string[]>([COACHES[0]])
   const [type, setType]             = useState('individual')
   const [date, setDate]             = useState(defaultDate || new Date().toISOString().split('T')[0])
   const [hour, setHour]             = useState(defaultHour || '4:00 PM')
@@ -55,11 +56,15 @@ export default function NewSessionModal({ defaultDate, defaultHour, onClose, onC
     setLoading(true)
     setError('')
     try {
+      const coachValue = type === 'camp'
+        ? selectedCoaches.join(', ')
+        : coach
+
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title, coach, type, date, hour, duration,
+          title, coach: coachValue, type, date, hour, duration,
           notes, recurType, occurrences: totalSessions,
         }),
       })
@@ -102,11 +107,40 @@ export default function NewSessionModal({ defaultDate, defaultHour, onClose, onC
 
           {/* Coach */}
           <div>
-            <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Coach</label>
-            <select value={coach} onChange={e => setCoach(e.target.value)}
-              className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#cee800]">
-              {COACHES.map(c => <option key={c}>{c}</option>)}
-            </select>
+            <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">
+              {type === 'camp' ? 'Coaches (select all attending)' : 'Coach'}
+            </label>
+            {type === 'camp' ? (
+              <div className="mt-1 space-y-2">
+                {COACHES.map(c => {
+                  const checked = selectedCoaches.includes(c)
+                  return (
+                    <button
+                      key={c} type="button"
+                      onClick={() => setSelectedCoaches(prev =>
+                        checked ? prev.filter(x => x !== c) : [...prev, c]
+                      )}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm font-semibold transition ${
+                        checked ? 'bg-[#cee800]/10 border-[#cee800] text-[#cee800]' : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:border-[#cee800]'
+                      }`}
+                    >
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center text-xs shrink-0 ${checked ? 'bg-[#cee800] border-[#cee800] text-black' : 'border-zinc-500'}`}>
+                        {checked ? '✓' : ''}
+                      </span>
+                      {c}
+                    </button>
+                  )
+                })}
+                {selectedCoaches.length === 0 && (
+                  <p className="text-red-400 text-xs">Select at least one coach</p>
+                )}
+              </div>
+            ) : (
+              <select value={coach} onChange={e => setCoach(e.target.value)}
+                className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#cee800]">
+                {COACHES.map(c => <option key={c}>{c}</option>)}
+              </select>
+            )}
           </div>
 
           {/* Type */}
