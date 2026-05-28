@@ -96,6 +96,7 @@ export default async function AdminDashboard() {
             { title: 'Coaches', desc: 'Coach schedules and payments', href: '/admin/coaches' },
             { title: 'Payments', desc: 'Revenue tracking and history', href: '/admin/payments' },
             { title: 'Requests', desc: `Session requests from parents${(pendingRequests ?? 0) > 0 ? ` · ${pendingRequests} pending` : ''}`, href: '/admin/requests' },
+            { title: 'Coach Portal', desc: 'View your schedule, players, and reports', href: '/coach' },
           ].map(({ title, desc, href }) => (
             <Link key={title} href={href} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 hover:border-[#cee800] transition block">
               <h3 className="font-black text-lg">{title}</h3>
