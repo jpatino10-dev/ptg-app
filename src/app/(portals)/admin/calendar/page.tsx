@@ -34,7 +34,7 @@ type Booking = {
   id: string; date: string; hour: string; coach: string; type: string
   player_name: string | null; parent_name: string | null; client: string
   status: string; price: string | null; is_group_slot: boolean
-  group_slot_id: string | null; capacity: number | null
+  group_slot_id: string | null; capacity: number | null; duration_minutes: number | null
 }
 
 function fmt(d: Date) {
@@ -240,6 +240,7 @@ function SessionDetail({ booking, onClose, onDelete }: { booking: Booking; onClo
             ['Coach',  booking.coach],
             ['Player', booking.player_name || booking.client],
             ['Parent', booking.parent_name],
+            ['Duration', booking.duration_minutes ? (booking.duration_minutes >= 60 ? `${booking.duration_minutes/60} hr${booking.duration_minutes > 60 ? 's' : ''}` : `${booking.duration_minutes} min`) : null],
             ['Status', booking.status],
             ['Price',  booking.price ? '$'+booking.price : null],
           ] as [string,string|null][]).filter(([,v]) => v).map(([k,v]) => (

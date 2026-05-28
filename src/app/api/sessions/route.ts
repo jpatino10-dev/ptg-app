@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   let query = admin
     .from('bookings')
-    .select('id,date,hour,coach,type,player_name,parent_name,client,status,price,is_group_slot,group_slot_id,capacity')
+    .select('id,date,hour,coach,type,player_name,parent_name,client,status,price,is_group_slot,group_slot_id,capacity,duration_minutes')
     .order('hour')
 
   if (from) query = query.gte('date', from)
@@ -42,28 +42,30 @@ export async function POST(req: NextRequest) {
   const admin = await verifyAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { coach, type, date, hour, playerName, notes, recurring, weeks } = await req.json()
+  const { title, coach, type, date, hour, duration, notes, recurType, occurrences: occ } = await req.json()
 
   const rows = []
   const base = new Date(date + 'T00:00:00')
-  const occurrences = recurring ? Math.min(parseInt(weeks) || 1, 52) : 1
+  const count = recurType !== 'none' ? Math.min(parseInt(occ) || 1, 52) : 1
+  const stepDays = recurType === 'daily' ? 1 : 7
 
-  for (let i = 0; i < occurrences; i++) {
+  for (let i = 0; i < count; i++) {
     const d = new Date(base)
-    d.setDate(d.getDate() + i * 7)
+    d.setDate(d.getDate() + i * (recurType !== 'none' ? stepDays : 0))
     rows.push({
-      id:            crypto.randomUUID(),
-      date:          d.toISOString().split('T')[0],
+      id:               crypto.randomUUID(),
+      date:             d.toISOString().split('T')[0],
       hour,
       coach,
       type,
-      client:        playerName || 'Admin Booking',
-      player_name:   playerName || null,
-      status:        'confirmed',
-      source:        'admin',
-      notes:         notes || null,
-      is_group_slot: type === 'group',
-      capacity:      type === 'group' ? 10 : null,
+      client:           title || 'Admin Booking',
+      player_name:      title || null,
+      status:           'confirmed',
+      source:           'admin',
+      notes:            notes || null,
+      is_group_slot:    type === 'group',
+      capacity:         type === 'group' ? 10 : null,
+      duration_minutes: duration || 60,
     })
   }
 
