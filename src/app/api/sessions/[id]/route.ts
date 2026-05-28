@@ -22,10 +22,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const admin = await getAdminClient(req)
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { date, hour } = await req.json()
-  const update: Record<string, string> = {}
-  if (date) update.date = date
-  if (hour) update.hour = hour
+  const body = await req.json()
+  const allowed = ['date','hour','coach','type','client','player_name','notes','status','duration_minutes']
+  const update: Record<string, unknown> = {}
+  for (const key of allowed) {
+    if (key in body) update[key] = body[key]
+  }
 
   const { error } = await admin.from('bookings').update(update).eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
