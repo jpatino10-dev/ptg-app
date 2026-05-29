@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
       },
     ],
     customer_email: email,
+    allow_promotion_codes: true,
     metadata: {
       session_type,
       player_name,
