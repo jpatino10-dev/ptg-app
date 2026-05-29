@@ -60,6 +60,7 @@ export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
 
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
+  const [applyToAll, setApplyToAll] = useState(false)
 
   const isCamp = type === 'camp'
 
@@ -82,6 +83,8 @@ export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
           duration_minutes: duration,
           notes,
           status,
+          applyToAll,
+          applyToClient:    applyToAll ? (booking.client || booking.player_name) : undefined,
         }),
       })
       const data = await res.json()
@@ -208,11 +211,27 @@ export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
               className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-[#cee800] resize-none" />
           </div>
 
+          {/* Apply scope */}
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setApplyToAll(false)}
+              className={`py-2 rounded-xl text-sm font-semibold border transition ${
+                !applyToAll ? 'bg-zinc-700 border-zinc-500 text-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+              }`}>
+              This session
+            </button>
+            <button type="button" onClick={() => setApplyToAll(true)}
+              className={`py-2 rounded-xl text-sm font-semibold border transition ${
+                applyToAll ? 'bg-zinc-700 border-[#cee800] text-[#cee800]' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+              }`}>
+              All "{booking.client || booking.player_name}"
+            </button>
+          </div>
+
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
           <button type="submit" disabled={loading}
             className="w-full bg-[#cee800] text-black font-black py-3 rounded-xl hover:bg-[#d4f030] transition disabled:opacity-50">
-            {loading ? 'SAVING...' : 'SAVE CHANGES'}
+            {loading ? 'SAVING...' : applyToAll ? 'SAVE ALL SESSIONS' : 'SAVE CHANGES'}
           </button>
         </form>
       </div>

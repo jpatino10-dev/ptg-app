@@ -23,13 +23,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const allowed = ['date','hour','coach','type','client','player_name','notes','status','duration_minutes']
+  const { applyToAll, applyToClient, ...rest } = body
+
+  // When updating all sessions with the same name, never overwrite date/time/duration
+  const singleAllowed = ['date','hour','coach','type','client','player_name','notes','status','duration_minutes']
+  const bulkAllowed   = ['coach','type','notes','status']
+  const allowed = applyToAll ? bulkAllowed : singleAllowed
+
   const update: Record<string, unknown> = {}
   for (const key of allowed) {
-    if (key in body) update[key] = body[key]
+    if (key in rest) update[key] = rest[key]
   }
 
-  const { error } = await admin.from('bookings').update(update).eq('id', id)
+  let query = admin.from('bookings').update(update)
+  if (applyToAll && applyToClient) {
+    query = query.eq('client', applyToClient)
+  } else {
+    query = query.eq('id', id)
+  }
+
+  const { error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
