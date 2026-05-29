@@ -387,6 +387,7 @@ export default function CalendarPage() {
   const [newSessionHour, setNewSessionHour]  = useState<string | undefined>()
   const [draggedBooking, setDraggedBooking]  = useState<Booking | null>(null)
   const [pendingReschedule, setPendingReschedule] = useState<{ booking: Booking; date: string } | null>(null)
+  const [seeding, setSeeding] = useState(false)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
   const todayStr = fmt(new Date())
@@ -456,6 +457,17 @@ export default function CalendarPage() {
     loadBookings()
   }
 
+  async function seedJuneGroups() {
+    setSeeding(true)
+    const res = await fetch('/api/admin/seed-group-sessions', { method: 'POST' })
+    const data = await res.json()
+    setSeeding(false)
+    if (data.error) { alert(data.error); return }
+    // Jump to June 2026 and reload
+    setView('month')
+    setAnchor(new Date(2026, 5, 1))
+  }
+
   async function deleteSession(id: string) {
     await fetch(`/api/sessions/${id}`, { method: 'DELETE' })
     setSelected(null)
@@ -483,6 +495,10 @@ export default function CalendarPage() {
             ))}
           </div>
           <div className="flex items-center gap-2 ml-auto">
+            <button onClick={seedJuneGroups} disabled={seeding}
+              className="px-4 py-1.5 bg-zinc-800 border border-zinc-700 text-white font-semibold text-sm rounded-lg hover:border-[#00e676] hover:text-[#00e676] transition disabled:opacity-50">
+              {seeding ? 'Adding...' : '+ June Groups'}
+            </button>
             <button onClick={() => openNewSession()}
               className="px-4 py-1.5 bg-[#cee800] text-black font-black text-sm rounded-lg hover:bg-[#d4f030] transition">
               + New Session

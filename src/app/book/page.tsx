@@ -31,13 +31,26 @@ const FORMATS = [
     id: 'group',
     label: 'Group Training',
     tagline: 'Small group, big results',
-    desc: 'Competitive environment with peers at your level. Monthly or drop-in options.',
+    desc: 'Join our Friday group sessions in June. Drop in for a single session or register for the full series.',
     priceDropin: 50,
     priceMonthly: 150,
     color: '#00e676',
     icon: '🏆',
   },
 ]
+
+const GROUP_SESSIONS = [
+  { id: 'boys_jun5',   date: 'Friday, June 5',   time: '6:00 PM – 7:00 PM', group: 'Elite Boys'  },
+  { id: 'boys_jun12',  date: 'Friday, June 12',  time: '6:00 PM – 7:00 PM', group: 'Elite Boys'  },
+  { id: 'boys_jun19',  date: 'Friday, June 19',  time: '6:00 PM – 7:00 PM', group: 'Elite Boys'  },
+  { id: 'boys_jun26',  date: 'Friday, June 26',  time: '6:00 PM – 7:00 PM', group: 'Elite Boys'  },
+  { id: 'girls_jun5',  date: 'Friday, June 5',   time: '7:00 PM – 8:00 PM', group: 'Elite Girls' },
+  { id: 'girls_jun12', date: 'Friday, June 12',  time: '7:00 PM – 8:00 PM', group: 'Elite Girls' },
+  { id: 'girls_jun19', date: 'Friday, June 19',  time: '7:00 PM – 8:00 PM', group: 'Elite Girls' },
+  { id: 'girls_jun26', date: 'Friday, June 26',  time: '7:00 PM – 8:00 PM', group: 'Elite Girls' },
+]
+
+const GROUP_LABELS = ['Elite Boys', 'Elite Girls']
 
 const FOCUS_AREAS = [
   { id: 'ball_mastery', label: 'Ball Mastery',        icon: '⚽', desc: 'First touch, close control, confidence on the ball' },
@@ -70,7 +83,8 @@ const TIME_PREFS = [
   { id: 'evening',   label: 'Evening',   sub: '5pm – 8pm',  icon: '🌆' },
 ]
 
-const STEPS = ['Format', 'Focus', 'Player', 'Contact', 'Schedule', 'Review']
+const STEPS_INDIVIDUAL = ['Format', 'Focus', 'Player', 'Contact', 'Schedule', 'Review']
+const STEPS_GROUP       = ['Format', 'Sessions', 'Player', 'Contact', 'Review']
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -78,13 +92,13 @@ function BookingFlow() {
   const searchParams = useSearchParams()
   const cancelled = searchParams.get('cancelled')
 
-  const [step, setStep] = useState(0)
+  const [step, setStep]         = useState(0)
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError]       = useState('')
 
-  // Selections
   const [format, setFormat]         = useState<string | null>(null)
   const [groupPlan, setGroupPlan]   = useState<'dropin' | 'monthly' | null>(null)
+  const [groupSessions, setGroupSessions] = useState<string[]>([])
   const [focusAreas, setFocusAreas] = useState<string[]>([])
   const [player, setPlayer] = useState({
     name: '', age_group: '', level: '', club: '', gender: '', strong_foot: '',
@@ -96,9 +110,12 @@ function BookingFlow() {
     preferred_days: [] as string[], time_pref: '', notes: '',
   })
 
-  const selectedFormat  = FORMATS.find(f => f.id === format)
-  const isGroup         = format === 'group'
-  const sessionTypeId   = isGroup ? (groupPlan === 'monthly' ? 'group_month' : 'group_dropin') : format || ''
+  const selectedFormat = FORMATS.find(f => f.id === format)
+  const isGroup        = format === 'group'
+  const STEPS          = isGroup ? STEPS_GROUP : STEPS_INDIVIDUAL
+  const reviewStep     = isGroup ? 4 : 5
+  const isReviewStep   = step === reviewStep
+  const sessionTypeId  = isGroup ? (groupPlan === 'monthly' ? 'group_month' : 'group_dropin') : format || ''
 
   const PRICES: Record<string, number> = {
     individual: 105, semi: 75, group_dropin: 50, group_month: 150,
@@ -111,6 +128,10 @@ function BookingFlow() {
     setFocusAreas(f => f.includes(id) ? f.filter(x => x !== id) : [...f, id])
   }
 
+  function toggleGroupSession(id: string) {
+    setGroupSessions(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id])
+  }
+
   function toggleDay(day: string) {
     setSchedule(s => ({
       ...s,
@@ -121,7 +142,13 @@ function BookingFlow() {
   }
 
   function canProceed() {
-    if (step === 0) return format !== null && (!isGroup || groupPlan !== null)
+    if (step === 0) return format !== null
+    if (isGroup) {
+      if (step === 1) return groupSessions.length > 0 && groupPlan !== null
+      if (step === 2) return player.name.trim() !== '' && player.age_group !== '' && player.strong_foot !== ''
+      if (step === 3) return contact.parent_name.trim() !== '' && contact.email.trim() !== ''
+      return true
+    }
     if (step === 1) return focusAreas.length > 0
     if (step === 2) return player.name.trim() !== '' && player.age_group !== '' && player.strong_foot !== ''
     if (step === 3) return contact.parent_name.trim() !== '' && contact.email.trim() !== ''
@@ -132,7 +159,27 @@ function BookingFlow() {
   async function checkout() {
     setSubmitting(true)
     setError('')
+
+    const groupSessionLabels = groupSessions.map(id => {
+      const s = GROUP_SESSIONS.find(s => s.id === id)
+      return s ? `${s.group} – ${s.date}` : id
+    }).join(', ')
+
     const focusLabel = focusAreas.map(id => FOCUS_AREAS.find(f => f.id === id)?.label).filter(Boolean).join(', ')
+
+    const notes = [
+      isGroup
+        ? (groupSessionLabels ? `Sessions: ${groupSessionLabels}` : '')
+        : (focusLabel ? `Focus: ${focusLabel}` : ''),
+      player.level       ? `Level: ${player.level}` : '',
+      player.club        ? `Club: ${player.club}` : '',
+      player.gender      ? `Gender: ${player.gender}` : '',
+      player.strong_foot ? `Strong foot: ${player.strong_foot}` : '',
+      !isGroup && schedule.preferred_days.length ? `Preferred days: ${schedule.preferred_days.join(', ')}` : '',
+      !isGroup && schedule.time_pref ? `Preferred time: ${schedule.time_pref}` : '',
+      schedule.notes,
+    ].filter(Boolean).join(' | ')
+
     const res = await fetch('/api/book/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -143,17 +190,8 @@ function BookingFlow() {
         email: contact.email,
         phone: contact.phone,
         age_group: player.age_group,
-        preferred_date: schedule.preferred_days.join(', '),
-        notes: [
-          focusLabel ? `Focus: ${focusLabel}` : '',
-          player.level       ? `Level: ${player.level}` : '',
-          player.club        ? `Club: ${player.club}` : '',
-          player.gender      ? `Gender: ${player.gender}` : '',
-          player.strong_foot ? `Strong foot: ${player.strong_foot}` : '',
-          schedule.preferred_days.length ? `Preferred days: ${schedule.preferred_days.join(', ')}` : '',
-          schedule.time_pref ? `Preferred time: ${schedule.time_pref}` : '',
-          schedule.notes,
-        ].filter(Boolean).join(' | '),
+        preferred_date: isGroup ? groupSessionLabels : schedule.preferred_days.join(', '),
+        notes,
       }),
     })
     const data = await res.json()
@@ -165,7 +203,7 @@ function BookingFlow() {
     }
   }
 
-  const progress = ((step) / (STEPS.length - 1)) * 100
+  const progress = (step / (STEPS.length - 1)) * 100
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -194,7 +232,6 @@ function BookingFlow() {
           </div>
         )}
 
-        {/* Step label */}
         <p className="text-zinc-500 text-xs font-semibold uppercase tracking-widest mb-2">
           Step {step + 1} of {STEPS.length} — {STEPS[step]}
         </p>
@@ -207,7 +244,8 @@ function BookingFlow() {
 
             <div className="space-y-3 mb-6">
               {FORMATS.map(f => (
-                <button key={f.id} onClick={() => { setFormat(f.id); if (f.id !== 'group') setGroupPlan(null) }}
+                <button key={f.id}
+                  onClick={() => { setFormat(f.id); setGroupSessions([]); setGroupPlan(null) }}
                   className={`w-full text-left rounded-2xl p-5 border transition ${
                     format === f.id ? 'border-[#cee800] bg-zinc-900' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
                   }`}>
@@ -234,33 +272,69 @@ function BookingFlow() {
                       )}
                     </div>
                   </div>
-
-                  {/* Group sub-option */}
-                  {f.id === 'group' && format === 'group' && (
-                    <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-zinc-700">
-                      {[
-                        { id: 'dropin', label: 'Drop-In', price: '$50', sub: 'Single session' },
-                        { id: 'monthly', label: 'Monthly Pass', price: '$150', sub: 'Unlimited sessions' },
-                      ].map(opt => (
-                        <button key={opt.id} onClick={e => { e.stopPropagation(); setGroupPlan(opt.id as 'dropin'|'monthly') }}
-                          className={`rounded-xl p-3 border text-center transition ${
-                            groupPlan === opt.id ? 'border-[#cee800] bg-zinc-800' : 'border-zinc-700 hover:border-zinc-500'
-                          }`}>
-                          <p className="font-black">{opt.label}</p>
-                          <p className="text-[#cee800] font-black">{opt.price}</p>
-                          <p className="text-zinc-500 text-xs">{opt.sub}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* ── Step 1: Focus Areas ── */}
-        {step === 1 && (
+        {/* ── Step 1 (Group): Choose Sessions ── */}
+        {step === 1 && isGroup && (
+          <div>
+            <h1 className="text-3xl font-black mb-1">Choose your sessions</h1>
+            <p className="text-zinc-400 mb-5">Select the Friday sessions you want to join. Pick one or all four.</p>
+
+            {/* Plan toggle */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {[
+                { id: 'dropin',  label: 'Drop-In',     price: '$50',  sub: 'Single session' },
+                { id: 'monthly', label: 'Full Series', price: '$150', sub: 'All 4 sessions' },
+              ].map(opt => (
+                <button key={opt.id}
+                  onClick={() => setGroupPlan(opt.id as 'dropin' | 'monthly')}
+                  className={`rounded-2xl p-4 border text-center transition ${
+                    groupPlan === opt.id ? 'border-[#cee800] bg-zinc-900' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
+                  }`}>
+                  <p className="font-black text-base">{opt.label}</p>
+                  <p className="text-[#cee800] font-black text-xl mt-0.5">{opt.price}</p>
+                  <p className="text-zinc-500 text-xs mt-1">{opt.sub}</p>
+                </button>
+              ))}
+            </div>
+
+            {/* Session cards grouped by program */}
+            <div className="space-y-5 mb-6">
+              {GROUP_LABELS.map(label => (
+                <div key={label}>
+                  <p className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-2">{label}</p>
+                  <div className="space-y-2">
+                    {GROUP_SESSIONS.filter(s => s.group === label).map(s => (
+                      <button key={s.id} onClick={() => toggleGroupSession(s.id)}
+                        className={`w-full text-left rounded-2xl p-4 border transition flex items-center gap-4 ${
+                          groupSessions.includes(s.id)
+                            ? 'border-[#cee800] bg-zinc-900'
+                            : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
+                        }`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-black text-base">{s.date}</p>
+                          <p className="text-[#cee800] text-sm font-semibold">{s.time}</p>
+                        </div>
+                        <div className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition ${
+                          groupSessions.includes(s.id) ? 'border-[#cee800] bg-[#cee800]' : 'border-zinc-600'
+                        }`}>
+                          {groupSessions.includes(s.id) && <span className="text-black text-xs font-black">✓</span>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 1 (Individual/Semi): Focus Areas ── */}
+        {step === 1 && !isGroup && (
           <div>
             <h1 className="text-3xl font-black mb-1">What do you want to work on?</h1>
             <p className="text-zinc-400 mb-6">Select all that apply — this helps us match the right coach and plan.</p>
@@ -383,12 +457,20 @@ function BookingFlow() {
                   placeholder="(555) 000-0000"
                   className="mt-1 w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-[#cee800]" />
               </div>
+              {!isGroup && (
+                <div>
+                  <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Anything else we should know?</label>
+                  <textarea value={schedule.notes} onChange={e => setSchedule(s => ({ ...s, notes: e.target.value }))} rows={3}
+                    placeholder="Injuries, scheduling constraints, specific goals, coach requests..."
+                    className="mt-1 w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-[#cee800] resize-none text-sm" />
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* ── Step 4: Schedule ── */}
-        {step === 4 && (
+        {/* ── Step 4 (Individual/Semi): Schedule ── */}
+        {step === 4 && !isGroup && (
           <div>
             <h1 className="text-3xl font-black mb-1">When works for you?</h1>
             <p className="text-zinc-400 mb-6">We'll confirm exact timing after reviewing availability with your coach.</p>
@@ -440,23 +522,106 @@ function BookingFlow() {
           </div>
         )}
 
-        {/* ── Step 5: Review ── */}
-        {step === 5 && selectedFormat && (
+        {/* ── Review: Group ── */}
+        {step === 4 && isGroup && selectedFormat && (
+          <div>
+            <h1 className="text-3xl font-black mb-1">Looks good?</h1>
+            <p className="text-zinc-400 mb-6">Review your registration before heading to payment.</p>
+
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 mb-6 space-y-4">
+              {/* Plan */}
+              <div className="flex items-center gap-3 pb-4 border-b border-zinc-800">
+                <span className="text-2xl">🏆</span>
+                <div>
+                  <p className="font-black text-lg">
+                    Group Training — {groupPlan === 'monthly' ? 'Full Series' : 'Drop-In'}
+                  </p>
+                  <p className="text-zinc-400 text-sm">{selectedFormat.tagline}</p>
+                </div>
+              </div>
+
+              {/* Selected sessions */}
+              <div>
+                <p className="text-zinc-500 text-xs uppercase tracking-wider mb-3">Selected Sessions</p>
+                <div className="space-y-2">
+                  {groupSessions.map(id => {
+                    const s = GROUP_SESSIONS.find(s => s.id === id)
+                    return s ? (
+                      <div key={id} className="flex items-center gap-3 bg-zinc-800 rounded-xl px-3 py-2.5">
+                        <span>⚽</span>
+                        <div>
+                          <p className="font-semibold text-sm">{s.group} · {s.date}</p>
+                          <p className="text-zinc-400 text-xs">{s.time}</p>
+                        </div>
+                      </div>
+                    ) : null
+                  })}
+                </div>
+              </div>
+
+              {/* Player + Contact */}
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-800">
+                {[
+                  ['Player', player.name],
+                  ['Age Group', player.age_group],
+                  player.strong_foot ? ['Strong Foot', player.strong_foot.charAt(0).toUpperCase() + player.strong_foot.slice(1)] : null,
+                  player.level ? ['Level', LEVELS.find(l => l.value === player.level)?.label ?? player.level] : null,
+                  player.club ? ['Club', player.club] : null,
+                  ['Parent', contact.parent_name],
+                  ['Email', contact.email],
+                  contact.phone ? ['Phone', contact.phone] : null,
+                ].filter((x): x is [string, string] => Array.isArray(x) && !!x[1]).map(([k, v]) => (
+                  <div key={k}>
+                    <p className="text-zinc-500 text-xs">{k}</p>
+                    <p className="font-semibold text-sm">{v}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Price */}
+              <div className="border-t border-zinc-800 pt-4 space-y-2 text-sm">
+                <div className="flex justify-between text-zinc-400">
+                  <span>Group Training — {groupPlan === 'monthly' ? 'Full Series' : 'Drop-In'}</span>
+                  <span>${basePrice.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-zinc-400">
+                  <span>Processing fee (3.5%)</span>
+                  <span>${fee.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-black text-xl pt-2 border-t border-zinc-800">
+                  <span>Total</span>
+                  <span className="text-[#cee800]">${total.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+
+            <button onClick={checkout} disabled={submitting}
+              className="w-full bg-[#cee800] text-black font-black py-4 rounded-2xl text-lg hover:bg-[#d4f030] transition disabled:opacity-50">
+              {submitting ? 'REDIRECTING TO PAYMENT...' : `PAY $${total.toFixed(2)} →`}
+            </button>
+            <p className="text-zinc-600 text-xs text-center mt-3">
+              Secure payment via Stripe · You'll receive a confirmation + account invite by email
+            </p>
+          </div>
+        )}
+
+        {/* ── Review: Individual / Semi ── */}
+        {step === 5 && !isGroup && selectedFormat && (
           <div>
             <h1 className="text-3xl font-black mb-1">Looks good?</h1>
             <p className="text-zinc-400 mb-6">Review your booking before heading to payment.</p>
 
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 mb-6 space-y-4">
-              {/* Format */}
               <div className="flex items-center gap-3 pb-4 border-b border-zinc-800">
                 <span className="text-2xl">{selectedFormat.icon}</span>
                 <div>
-                  <p className="font-black text-lg">{selectedFormat.label}{isGroup && groupPlan ? ` — ${groupPlan === 'monthly' ? 'Monthly Pass' : 'Drop-In'}` : ''}</p>
+                  <p className="font-black text-lg">{selectedFormat.label}</p>
                   <p className="text-zinc-400 text-sm">{selectedFormat.tagline}</p>
                 </div>
               </div>
 
-              {/* Focus */}
               <div>
                 <p className="text-zinc-500 text-xs uppercase tracking-wider mb-2">Focus Areas</p>
                 <div className="flex flex-wrap gap-2">
@@ -471,7 +636,6 @@ function BookingFlow() {
                 </div>
               </div>
 
-              {/* Player */}
               <div className="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-800">
                 {[
                   ['Player', player.name],
@@ -492,7 +656,6 @@ function BookingFlow() {
                 ))}
               </div>
 
-              {/* Price */}
               <div className="border-t border-zinc-800 pt-4 space-y-2 text-sm">
                 <div className="flex justify-between text-zinc-400">
                   <span>{selectedFormat.label}</span>
@@ -522,7 +685,7 @@ function BookingFlow() {
         )}
 
         {/* Navigation */}
-        {step < 5 && (
+        {!isReviewStep && (
           <div className="flex gap-3">
             {step > 0 && (
               <button onClick={() => setStep(s => s - 1)}
@@ -532,13 +695,13 @@ function BookingFlow() {
             )}
             <button onClick={() => setStep(s => s + 1)} disabled={!canProceed()}
               className="flex-1 bg-[#cee800] text-black font-black py-4 rounded-2xl text-lg hover:bg-[#d4f030] transition disabled:opacity-30 disabled:cursor-not-allowed">
-              {step === 4 ? 'Review Booking →' : 'Continue →'}
+              {((isGroup && step === 3) || (!isGroup && step === 4)) ? 'Review Booking →' : 'Continue →'}
             </button>
           </div>
         )}
 
-        {step === 5 && (
-          <button onClick={() => setStep(4)}
+        {isReviewStep && (
+          <button onClick={() => setStep(s => s - 1)}
             className="w-full mt-3 text-zinc-500 text-sm hover:text-white transition">
             ← Go back and edit
           </button>
