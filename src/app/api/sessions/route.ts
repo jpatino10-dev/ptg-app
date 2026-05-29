@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   let query = admin
     .from('bookings')
-    .select('id,date,hour,coach,type,player_name,parent_name,client,status,price,is_group_slot,group_slot_id,capacity,duration_minutes')
+    .select('id,date,hour,coach,type,player_name,parent_name,client,status,price,is_group_slot,group_slot_id,capacity,duration_minutes,location,notes')
     .order('hour')
 
   if (from) query = query.gte('date', from)
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   const admin = await verifyAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { title, coach, type, date, hour, duration, notes, recurType, occurrences: occ } = await req.json()
+  const { title, coach, type, date, hour, duration, notes, location, recurType, occurrences: occ } = await req.json()
 
   const rows = []
   const base = new Date(date + 'T00:00:00')
@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
       status:           'confirmed',
       source:           'admin',
       notes:            notes || null,
+      location:         location || null,
       is_group_slot:    type === 'group',
       capacity:         type === 'group' ? 10 : null,
       duration_minutes: duration || 60,

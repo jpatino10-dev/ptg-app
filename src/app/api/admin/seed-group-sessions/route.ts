@@ -18,14 +18,14 @@ async function verifyAdmin() {
 }
 
 const JUNE_SESSIONS = [
-  { date: '2026-06-05', hour: '6:00 PM', client: 'Elite Boys',  duration: 60 },
-  { date: '2026-06-12', hour: '6:00 PM', client: 'Elite Boys',  duration: 60 },
-  { date: '2026-06-19', hour: '6:00 PM', client: 'Elite Boys',  duration: 60 },
-  { date: '2026-06-26', hour: '6:00 PM', client: 'Elite Boys',  duration: 60 },
-  { date: '2026-06-05', hour: '7:00 PM', client: 'Elite Girls', duration: 60 },
-  { date: '2026-06-12', hour: '7:00 PM', client: 'Elite Girls', duration: 60 },
-  { date: '2026-06-19', hour: '7:00 PM', client: 'Elite Girls', duration: 60 },
-  { date: '2026-06-26', hour: '7:00 PM', client: 'Elite Girls', duration: 60 },
+  { date: '2026-06-05', hour: '6:00 PM', client: 'Elite Boys',  duration: 60, location: '' },
+  { date: '2026-06-12', hour: '6:00 PM', client: 'Elite Boys',  duration: 60, location: '' },
+  { date: '2026-06-19', hour: '6:00 PM', client: 'Elite Boys',  duration: 60, location: '' },
+  { date: '2026-06-26', hour: '6:00 PM', client: 'Elite Boys',  duration: 60, location: '' },
+  { date: '2026-06-05', hour: '7:00 PM', client: 'Elite Girls', duration: 60, location: '' },
+  { date: '2026-06-12', hour: '7:00 PM', client: 'Elite Girls', duration: 60, location: '' },
+  { date: '2026-06-19', hour: '7:00 PM', client: 'Elite Girls', duration: 60, location: '' },
+  { date: '2026-06-26', hour: '7:00 PM', client: 'Elite Girls', duration: 60, location: '' },
 ]
 
 export async function POST() {
@@ -56,6 +56,7 @@ export async function POST() {
     status:           'confirmed',
     source:           'admin',
     notes:            'June Group Training Series',
+    location:         s.location || null,
     is_group_slot:    true,
     capacity:         12,
     duration_minutes: s.duration,

@@ -28,7 +28,7 @@ const DURATIONS = [
 type Booking = {
   id: string; date: string; hour: string; coach: string; type: string
   player_name: string | null; client: string; status: string
-  notes?: string | null; duration_minutes: number | null
+  notes?: string | null; duration_minutes: number | null; location?: string | null
 }
 
 type Props = {
@@ -58,6 +58,7 @@ export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
     isMultiCoach ? initialCoaches : []
   )
 
+  const [location, setLocation] = useState(booking.location || '')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
   const [applyToAll, setApplyToAll] = useState(false)
@@ -82,6 +83,7 @@ export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
           coach:            coachValue,
           duration_minutes: duration,
           notes,
+          location,
           status,
           applyToAll,
           applyToClient:    applyToAll ? (booking.client || booking.player_name) : undefined,
@@ -203,11 +205,19 @@ export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
             </select>
           </div>
 
+          {/* Location */}
+          <div>
+            <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Location</label>
+            <input type="text" value={location} onChange={e => setLocation(e.target.value)}
+              placeholder="e.g. PTG Training Facility, Field 3"
+              className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-[#cee800]" />
+          </div>
+
           {/* Notes */}
           <div>
             <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Notes</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-              placeholder="Location, focus area, etc."
+              placeholder="Focus area, equipment, etc."
               className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-[#cee800] resize-none" />
           </div>
 

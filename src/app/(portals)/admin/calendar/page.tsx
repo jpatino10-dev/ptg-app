@@ -40,7 +40,7 @@ type Booking = {
   player_name: string | null; parent_name: string | null; client: string
   status: string; price: string | null; is_group_slot: boolean
   group_slot_id: string | null; capacity: number | null
-  duration_minutes: number | null; notes: string | null
+  duration_minutes: number | null; notes: string | null; location: string | null
 }
 
 function fmt(d: Date) {
@@ -349,6 +349,7 @@ function SessionDetail({ booking, onClose, onEdit, onDelete }: {
             ['Duration', durLabel],
             ['Coach',    booking.coach],
             ['Status',   booking.status],
+            ['Location',  booking.location],
             ['Notes',    booking.notes],
             ['Price',    booking.price ? '$'+booking.price : null],
           ] as [string,string|null][]).filter(([,v]) => v).map(([k,v]) => (

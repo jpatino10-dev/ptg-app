@@ -43,6 +43,7 @@ export default function NewSessionModal({ defaultDate, defaultHour, onClose, onC
   const [hour, setHour]             = useState(defaultHour || '4:00 PM')
   const [duration, setDuration]     = useState(60)
   const [notes, setNotes]           = useState('')
+  const [location, setLocation]     = useState('')
   const [recurType, setRecurType]   = useState<RecurType>('none')
   const [occurrences, setOccurrences] = useState('8')
   const [loading, setLoading]       = useState(false)
@@ -65,7 +66,7 @@ export default function NewSessionModal({ defaultDate, defaultHour, onClose, onC
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title, coach: coachValue, type, date, hour, duration,
-          notes, recurType, occurrences: totalSessions,
+          notes, location, recurType, occurrences: totalSessions,
         }),
       })
       const data = await res.json()
@@ -189,11 +190,19 @@ export default function NewSessionModal({ defaultDate, defaultHour, onClose, onC
             </div>
           </div>
 
+          {/* Location */}
+          <div>
+            <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Location <span className="text-zinc-600 normal-case">(optional)</span></label>
+            <input type="text" value={location} onChange={e => setLocation(e.target.value)}
+              placeholder="e.g. PTG Training Facility, Field 3"
+              className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-[#cee800]" />
+          </div>
+
           {/* Notes */}
           <div>
             <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Notes <span className="text-zinc-600 normal-case">(optional)</span></label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-              placeholder="Location, focus area, equipment needed..."
+              placeholder="Focus area, equipment needed..."
               className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-[#cee800] resize-none" />
           </div>
 
