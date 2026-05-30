@@ -36,7 +36,7 @@ export async function sendGroupConfirmation(opts: GroupConfirmationOptions) {
         <p style="color:#a1a1aa;margin:4px 0 0;font-size:14px;">Total paid: ${opts.totalPaid}</p>
       </div>
 
-      <p style="color:#71717a;font-size:13px;">Sessions are held at PTG training facility. Arrive 10 minutes early. Wear cleats and bring water.</p>
+      <p style="color:#71717a;font-size:13px;">Please arrive 10 minutes early. Bring plenty of water. Wear your PTG shirt, black shorts and black socks.</p>
       <p style="color:#71717a;font-size:13px;">Questions? Reply to this email or text us.</p>
 
       <hr style="border:none;border-top:1px solid #27272a;margin:24px 0;" />
