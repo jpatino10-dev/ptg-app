@@ -1,7 +1,5 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 type GroupConfirmationOptions = {
   to: string
   parentName: string
@@ -13,6 +11,7 @@ type GroupConfirmationOptions = {
 
 export async function sendGroupConfirmation(opts: GroupConfirmationOptions) {
   if (!process.env.RESEND_API_KEY) return
+  const resend = new Resend(process.env.RESEND_API_KEY)
 
   const sessionLines = opts.sessions
     .map(s => `<li style="margin:6px 0;"><strong>${s.group}</strong> — ${s.date}, ${s.time}</li>`)
@@ -64,6 +63,7 @@ type IndividualConfirmationOptions = {
 
 export async function sendIndividualConfirmation(opts: IndividualConfirmationOptions) {
   if (!process.env.RESEND_API_KEY) return
+  const resend = new Resend(process.env.RESEND_API_KEY)
 
   const typeLabels: Record<string, string> = {
     individual: 'Individual (1-on-1)',
