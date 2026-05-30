@@ -26,8 +26,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { applyToAll, applyToClient, ...rest } = body
 
   // When updating all sessions with the same name, never overwrite date/time/duration
-  const singleAllowed = ['date','hour','coach','type','client','player_name','notes','status','duration_minutes','location']
-  const bulkAllowed   = ['coach','type','notes','status','location']
+  const singleAllowed = ['date','hour','coach','type','client','player_name','notes','status','duration_minutes','location','capacity']
+  const bulkAllowed   = ['coach','type','notes','status','location','capacity']
   const allowed = applyToAll ? bulkAllowed : singleAllowed
 
   const update: Record<string, unknown> = {}

@@ -44,6 +44,9 @@ export default function GroupSessionRosterPage() {
   const [adding, setAdding] = useState(false)
   const [cancelTarget, setCancelTarget] = useState<Registration | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [editingCapacity, setEditingCapacity] = useState(false)
+  const [capacityInput, setCapacityInput] = useState('')
+  const [savingCapacity, setSavingCapacity] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -78,6 +81,20 @@ export default function GroupSessionRosterPage() {
       body: JSON.stringify({ registrationId }),
     })
     setUpdatingId(null)
+    load()
+  }
+
+  async function saveCapacity() {
+    const val = parseInt(capacityInput)
+    if (!val || val < 1) return
+    setSavingCapacity(true)
+    await fetch(`/api/sessions/${slotId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ capacity: val }),
+    })
+    setSavingCapacity(false)
+    setEditingCapacity(false)
     load()
   }
 
@@ -147,7 +164,31 @@ export default function GroupSessionRosterPage() {
                 {active.length}
                 <span className="text-zinc-500 text-xl font-normal">/{capacity}</span>
               </p>
-              <p className="text-zinc-500 text-xs">registered</p>
+              {editingCapacity ? (
+                <div className="flex items-center gap-1 mt-1 justify-end">
+                  <input
+                    type="number"
+                    min={1}
+                    value={capacityInput}
+                    onChange={e => setCapacityInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveCapacity(); if (e.key === 'Escape') setEditingCapacity(false) }}
+                    className="w-16 bg-zinc-800 border border-zinc-600 rounded-lg px-2 py-1 text-white text-sm text-center focus:outline-none focus:border-[#cee800]"
+                    autoFocus
+                  />
+                  <button onClick={saveCapacity} disabled={savingCapacity}
+                    className="text-xs font-bold px-2 py-1 bg-[#cee800] text-black rounded-lg disabled:opacity-50">
+                    {savingCapacity ? '...' : '✓'}
+                  </button>
+                  <button onClick={() => setEditingCapacity(false)}
+                    className="text-xs text-zinc-500 hover:text-white px-1">✕</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setCapacityInput(String(capacity)); setEditingCapacity(true) }}
+                  className="text-zinc-500 text-xs hover:text-[#cee800] transition mt-0.5">
+                  capacity · edit
+                </button>
+              )}
             </div>
           </div>
 
