@@ -293,7 +293,11 @@ function BookingFlow() {
                 { id: 'monthly', label: 'Full Series', price: '$150', sub: 'All 4 sessions' },
               ].map(opt => (
                 <button key={opt.id}
-                  onClick={() => setGroupPlan(opt.id as 'dropin' | 'monthly')}
+                  onClick={() => {
+                    setGroupPlan(opt.id as 'dropin' | 'monthly')
+                    if (opt.id === 'monthly') setGroupSessions(GROUP_SESSIONS.map(s => s.id))
+                    else setGroupSessions([])
+                  }}
                   className={`rounded-2xl p-4 border text-center transition ${
                     groupPlan === opt.id ? 'border-[#cee800] bg-zinc-900' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
                   }`}>
