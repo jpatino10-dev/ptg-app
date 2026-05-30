@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 
-const SIZES = ['YS', 'YM', 'YL', 'YXL', 'AS', 'AM', 'AL', 'AXL', 'AXXL']
+const SIZES = ['YXS', 'YS', 'YM', 'YL', 'YXL', 'AS', 'AM', 'AL', 'AXL', 'AXXL']
 
 const PRICE = 25
 const FEE   = Math.round(PRICE * 0.035 * 100) / 100
