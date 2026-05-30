@@ -33,6 +33,9 @@ export default async function AdminDashboard() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  const isAdmin = myProfile?.role === 'admin'
+
   const admin = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -66,7 +69,7 @@ export default async function AdminDashboard() {
   const stats = [
     { label: 'Total Players', value: String(totalPlayers ?? 0) },
     { label: 'Sessions This Week', value: String(sessionsThisWeek ?? 0) },
-    { label: 'Revenue This Month', value: `$${revenueThisMonth.toFixed(0)}` },
+    ...(isAdmin ? [{ label: 'Revenue This Month', value: `$${revenueThisMonth.toFixed(0)}` }] : []),
   ]
 
   return (
@@ -94,9 +97,11 @@ export default async function AdminDashboard() {
             { title: 'Calendar', desc: 'Manage sessions and group slots', href: '/admin/calendar' },
             { title: 'Players', desc: 'View and manage player profiles', href: '/admin/players' },
             { title: 'Coaches', desc: 'Coach schedules and payments', href: '/admin/coaches' },
-            { title: 'Payments', desc: 'Revenue tracking and history', href: '/admin/payments' },
+            ...(isAdmin ? [
+              { title: 'Payments', desc: 'Revenue tracking and history', href: '/admin/payments' },
+              { title: 'Discounts', desc: 'Create and manage promotion codes', href: '/admin/discounts' },
+            ] : []),
             { title: 'Requests', desc: `Session requests from parents${(pendingRequests ?? 0) > 0 ? ` · ${pendingRequests} pending` : ''}`, href: '/admin/requests' },
-            { title: 'Discounts', desc: 'Create and manage promotion codes', href: '/admin/discounts' },
             { title: 'Coach Portal', desc: 'View your schedule, players, and reports', href: '/coach' },
           ].map(({ title, desc, href }) => (
             <Link key={title} href={href} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 hover:border-[#cee800] transition block">

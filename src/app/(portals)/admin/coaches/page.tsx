@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import InviteCoachForm from '@/components/InviteCoachForm'
+import SetRoleButton from '@/components/SetRoleButton'
 
 const RATES: Record<string, { individual: number; semi: number; group: number }> = {
   aidan:  { individual: 50,  semi: 45, group: 150 },
@@ -14,10 +15,13 @@ export default async function CoachesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  const isAdmin = myProfile?.role === 'admin'
+
   const { data: coaches } = await supabase
     .from('profiles')
-    .select('id, full_name, email, created_at')
-    .eq('role', 'coach')
+    .select('id, full_name, email, role, created_at')
+    .in('role', ['coach', 'director'])
     .order('full_name')
 
   const today = new Date().toISOString().split('T')[0]
@@ -62,11 +66,19 @@ export default async function CoachesPage() {
                 <div key={coach.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 hover:border-[#cee800] transition">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="font-black text-lg">{coach.full_name || 'Unnamed Coach'}</h3>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <h3 className="font-black text-lg">{coach.full_name || 'Unnamed Coach'}</h3>
+                        {coach.role === 'director' && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#cee800]/20 text-[#cee800]">Director</span>
+                        )}
+                      </div>
                       <p className="text-zinc-400 text-sm">{coach.email}</p>
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-[#cee800] flex items-center justify-center text-black font-black text-sm">
-                      {(coach.full_name || 'C').split(' ').map((n: string) => n[0]).join('').slice(0,2)}
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="w-10 h-10 rounded-full bg-[#cee800] flex items-center justify-center text-black font-black text-sm">
+                        {(coach.full_name || 'C').split(' ').map((n: string) => n[0]).join('').slice(0,2)}
+                      </div>
+                      {isAdmin && <SetRoleButton userId={coach.id} currentRole={coach.role} />}
                     </div>
                   </div>
 

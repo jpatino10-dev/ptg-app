@@ -42,10 +42,17 @@ export async function middleware(request: NextRequest) {
     .single()
 
   const role = profile?.role
-  if (pathname.startsWith('/admin') && role !== 'admin') {
+  const isAdmin     = role === 'admin'
+  const isDirector  = role === 'director'
+
+  // Payments and discounts are admin-only
+  if ((pathname.startsWith('/admin/payments') || pathname.startsWith('/admin/discounts')) && !isAdmin) {
+    return NextResponse.redirect(new URL('/admin', request.url))
+  }
+  if (pathname.startsWith('/admin') && !isAdmin && !isDirector) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
-  if (pathname.startsWith('/coach') && role !== 'coach' && role !== 'admin') {
+  if (pathname.startsWith('/coach') && role !== 'coach' && !isAdmin && !isDirector) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
   if (pathname.startsWith('/parent') && role !== 'parent' && role !== 'admin') {
