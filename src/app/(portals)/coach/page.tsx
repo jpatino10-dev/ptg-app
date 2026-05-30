@@ -15,6 +15,7 @@ export default function CoachDashboard() {
   const router = useRouter()
   const [sessions, setSessions] = useState<Session[]>([])
   const [userName, setUserName] = useState('')
+  const [userRole, setUserRole] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -25,8 +26,9 @@ export default function CoachDashboard() {
       )
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
+      const { data: profile } = await supabase.from('profiles').select('full_name, role').eq('id', user.id).single()
       setUserName(profile?.full_name || user.email || '')
+      setUserRole(profile?.role || '')
 
       const res = await fetch('/api/coach/sessions')
       if (res.ok) setSessions(await res.json())
@@ -80,7 +82,12 @@ export default function CoachDashboard() {
             <h1 className="text-2xl font-black text-[#cee800] tracking-widest">COACH PORTAL</h1>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-zinc-400 text-sm hidden sm:block">{userName}</span>
+            <div className="hidden sm:flex items-center gap-2">
+              {userRole === 'director' && (
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#cee800]/20 text-[#cee800]">Director</span>
+              )}
+              <span className="text-zinc-400 text-sm">{userName}</span>
+            </div>
             <button onClick={signOut} className="text-zinc-500 hover:text-white text-sm transition">Sign out</button>
           </div>
         </div>
