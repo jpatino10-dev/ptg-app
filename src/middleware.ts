@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes
-  if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/auth/') || pathname.startsWith('/book')) {
+  if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/auth/') || pathname.startsWith('/book') || pathname.startsWith('/api/book/') || pathname.startsWith('/api/group-slots')) {
     return supabaseResponse
   }
 
