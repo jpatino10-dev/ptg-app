@@ -13,7 +13,6 @@ const FORMATS = [
     label: 'Individual',
     tagline: '1-on-1 with your coach',
     desc: 'Maximum attention on your game. Every drill, every rep is designed for you.',
-    price: 105,
     color: '#cee800',
     icon: '⚡',
   },
@@ -22,10 +21,8 @@ const FORMATS = [
     label: 'Semi-Private',
     tagline: '2 players, 1 coach',
     desc: 'Train with a teammate or friend. Push each other while sharing expert coaching.',
-    price: 75,
     color: '#00e5ff',
     icon: '👥',
-    note: 'per player',
   },
   {
     id: 'group',
@@ -270,19 +267,12 @@ function BookingFlow() {
                         <p className="text-zinc-400 text-sm">{f.desc}</p>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      {'price' in f ? (
-                        <>
-                          <p className="font-black text-xl">${f.price}</p>
-                          {f.note && <p className="text-zinc-500 text-xs">{f.note}</p>}
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-black">${f.priceDropin} drop-in</p>
-                          <p className="text-zinc-400 text-sm">${f.priceMonthly}/mo</p>
-                        </>
-                      )}
-                    </div>
+                    {'priceDropin' in f && (
+                      <div className="text-right shrink-0">
+                        <p className="font-black">${f.priceDropin} drop-in</p>
+                        <p className="text-zinc-400 text-sm">${f.priceMonthly}/mo</p>
+                      </div>
+                    )}
                   </div>
                 </button>
               ))}
