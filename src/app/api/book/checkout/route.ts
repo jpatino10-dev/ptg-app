@@ -12,7 +12,7 @@ const PRICES: Record<string, { amount: number; label: string }> = {
 export async function POST(req: NextRequest) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
   const body = await req.json()
-  const { session_type, player_name, parent_name, email, phone, age_group, notes, preferred_date } = body
+  const { session_type, player_name, parent_name, email, phone, age_group, notes, preferred_date, selected_slot_ids } = body
 
   const priceInfo = PRICES[session_type]
   if (!priceInfo) return NextResponse.json({ error: 'Invalid session type' }, { status: 400 })
@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       age_group: age_group || '',
       notes: notes || '',
       preferred_date: preferred_date || '',
+      selected_slot_ids: selected_slot_ids ? JSON.stringify(selected_slot_ids) : '',
     },
     success_url: `${siteUrl}/book/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${siteUrl}/book?cancelled=true`,

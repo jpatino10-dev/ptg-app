@@ -25,6 +25,18 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
+  // Mapping from static booking IDs used in the book page to slot attributes
+  const SLOT_MAP: Record<string, { date: string; hour: string; client: string }> = {
+    boys_jun5:   { date: '2026-06-05', hour: '6:00 PM', client: 'Elite Boys'  },
+    boys_jun12:  { date: '2026-06-12', hour: '6:00 PM', client: 'Elite Boys'  },
+    boys_jun19:  { date: '2026-06-19', hour: '6:00 PM', client: 'Elite Boys'  },
+    boys_jun26:  { date: '2026-06-26', hour: '6:00 PM', client: 'Elite Boys'  },
+    girls_jun5:  { date: '2026-06-05', hour: '7:00 PM', client: 'Elite Girls' },
+    girls_jun12: { date: '2026-06-12', hour: '7:00 PM', client: 'Elite Girls' },
+    girls_jun19: { date: '2026-06-19', hour: '7:00 PM', client: 'Elite Girls' },
+    girls_jun26: { date: '2026-06-26', hour: '7:00 PM', client: 'Elite Girls' },
+  }
+
   // Map session type to booking type
   const typeMap: Record<string, string> = {
     individual: 'individual', semi: 'semi', duo: 'duo',
@@ -66,6 +78,34 @@ export async function POST(req: NextRequest) {
       phone: meta.phone || null,
       age_group: meta.age_group || null,
     })
+  }
+
+  // Create group registrations for each selected slot
+  if (meta.selected_slot_ids) {
+    const selectedIds: string[] = JSON.parse(meta.selected_slot_ids)
+    for (const staticId of selectedIds) {
+      const slotAttrs = SLOT_MAP[staticId]
+      if (!slotAttrs) continue
+      const { data: slot } = await admin
+        .from('bookings')
+        .select('id')
+        .eq('date', slotAttrs.date)
+        .eq('hour', slotAttrs.hour)
+        .eq('client', slotAttrs.client)
+        .eq('is_group_slot', true)
+        .maybeSingle()
+      if (slot) {
+        await admin.from('group_registrations').insert({
+          slot_id: slot.id,
+          player_name: meta.player_name,
+          parent_name: meta.parent_name || null,
+          email: meta.email || null,
+          phone: meta.phone || null,
+          stripe_session_id: session.id,
+          status: 'registered',
+        })
+      }
+    }
   }
 
   // Invite parent if they don't already have an account

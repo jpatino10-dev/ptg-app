@@ -192,6 +192,7 @@ function BookingFlow() {
         age_group: player.age_group,
         preferred_date: isGroup ? groupSessionLabels : schedule.preferred_days.join(', '),
         notes,
+        ...(isGroup ? { selected_slot_ids: groupSessions } : {}),
       }),
     })
     const data = await res.json()

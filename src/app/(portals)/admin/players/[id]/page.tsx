@@ -20,6 +20,7 @@ type Player = {
   email: string | null; phone: string | null; dob: string | null
   age_group: string | null; gender: string | null; level: string | null
   club: string | null; goals: string | null; coach_notes: string | null
+  emergency_contact_name: string | null; emergency_contact_phone: string | null
   created_at: string
 }
 
@@ -158,6 +159,8 @@ export default function PlayerDetailPage() {
                   ['dob',         'Date of Birth', 'text'],
                   ['age_group',   'Age Group', 'text'],
                   ['club',        'Club', 'text'],
+                  ['emergency_contact_name',  'Emergency Contact Name', 'text'],
+                  ['emergency_contact_phone', 'Emergency Contact Phone', 'text'],
                 ] as [keyof Player, string, string][]).map(([key, label, type]) => (
                   <div key={key} className={key === 'player_name' || key === 'parent_name' ? 'col-span-2' : ''}>
                     <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">{label}</label>
@@ -206,6 +209,8 @@ export default function PlayerDetailPage() {
                 ['Level',     player.level ? (LEVEL_LABELS[player.level] || player.level) : null],
                 ['Club',      player.club],
                 ['Goals',     player.goals],
+                ['Emergency Contact', player.emergency_contact_name],
+                ['Emergency Phone',   player.emergency_contact_phone],
               ] as [string, string|null][]).filter(([,v]) => v).map(([k,v]) => (
                 <div key={k}>
                   <p className="text-zinc-500 text-xs">{k}</p>

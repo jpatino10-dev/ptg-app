@@ -95,6 +95,7 @@ export default async function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
             { title: 'Calendar', desc: 'Manage sessions and group slots', href: '/admin/calendar' },
+            { title: 'Group Sessions', desc: 'Rosters, attendance, and registration counts', href: '/admin/group-sessions' },
             { title: 'Players', desc: 'View and manage player profiles', href: '/admin/players' },
             { title: 'Coaches', desc: 'Coach schedules and payments', href: '/admin/coaches' },
             ...(isAdmin ? [

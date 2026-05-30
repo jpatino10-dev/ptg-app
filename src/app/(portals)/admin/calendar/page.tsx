@@ -359,6 +359,12 @@ function SessionDetail({ booking, onClose, onEdit, onDelete }: {
             </div>
           ))}
         </div>
+        {booking.is_group_slot && (
+          <a href={`/admin/group-sessions/${booking.id}`}
+            className="block w-full mb-3 py-2.5 text-center bg-[#00e676]/10 border border-[#00e676]/40 text-[#00e676] font-black rounded-xl text-sm hover:bg-[#00e676]/20 transition">
+            View Roster →
+          </a>
+        )}
         <div className="flex gap-3">
           <button onClick={onEdit}
             className="flex-1 py-2.5 bg-[#cee800] text-black font-black rounded-xl text-sm hover:bg-[#d4f030] transition">
