@@ -37,7 +37,8 @@ export async function sendGroupConfirmation(opts: GroupConfirmationOptions) {
       </div>
 
       <p style="color:#71717a;font-size:13px;">Please arrive 10 minutes early. Bring plenty of water. Wear your PTG shirt, black shorts and black socks.</p>
-      <p style="color:#71717a;font-size:13px;">Questions? Reply to this email or text us.</p>
+      <p style="color:#71717a;font-size:13px;">Questions? Reply to this email and we'll get back to you.</p>
+      <p style="color:#71717a;font-size:13px;margin:4px 0 0;">— PTG Staff</p>
 
       <hr style="border:none;border-top:1px solid #27272a;margin:24px 0;" />
       <p style="color:#3f3f46;font-size:11px;margin:0;">Patino Training Grounds · trainatptg.com</p>
