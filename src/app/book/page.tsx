@@ -98,6 +98,7 @@ function BookingFlow() {
 
   const [format, setFormat]         = useState<string | null>(null)
   const [groupPlan, setGroupPlan]   = useState<'dropin' | 'monthly' | null>(null)
+  const [groupTeam, setGroupTeam]   = useState<string | null>(null)
   const [groupSessions, setGroupSessions] = useState<string[]>([])
   const [focusAreas, setFocusAreas] = useState<string[]>([])
   const [player, setPlayer] = useState({
@@ -152,7 +153,7 @@ function BookingFlow() {
   function canProceed() {
     if (step === 0) return format !== null
     if (isGroup) {
-      if (step === 1) return groupSessions.length > 0 && groupPlan !== null
+      if (step === 1) return groupSessions.length > 0 && groupPlan !== null && groupTeam !== null
       if (step === 2) return player.name.trim() !== '' && player.age_group !== '' && player.strong_foot !== ''
       if (step === 3) return contact.parent_name.trim() !== '' && contact.email.trim() !== ''
       return true
@@ -254,7 +255,7 @@ function BookingFlow() {
             <div className="space-y-3 mb-6">
               {FORMATS.map(f => (
                 <button key={f.id}
-                  onClick={() => { setFormat(f.id); setGroupSessions([]); setGroupPlan(null) }}
+                  onClick={() => { setFormat(f.id); setGroupSessions([]); setGroupPlan(null); setGroupTeam(null) }}
                   className={`w-full text-left rounded-2xl p-5 border transition ${
                     format === f.id ? 'border-[#cee800] bg-zinc-900' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
                   }`}>
@@ -284,19 +285,48 @@ function BookingFlow() {
         {step === 1 && isGroup && (
           <div>
             <h1 className="text-3xl font-black mb-1">Choose your sessions</h1>
-            <p className="text-zinc-400 mb-5">Select the Friday sessions you want to join. Pick one or all four.</p>
+            <p className="text-zinc-400 mb-5">Pick your group and training plan.</p>
+
+            {/* Group selector */}
+            <p className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-2">Which group?</p>
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {GROUP_LABELS.map(label => (
+                <button key={label}
+                  onClick={() => {
+                    setGroupTeam(label)
+                    // Re-apply plan selection to new group
+                    if (groupPlan === 'monthly') {
+                      setGroupSessions(GROUP_SESSIONS.filter(s => s.group === label).map(s => s.id))
+                    } else {
+                      setGroupSessions([])
+                    }
+                  }}
+                  className={`rounded-2xl p-4 border text-center transition ${
+                    groupTeam === label ? 'border-[#cee800] bg-zinc-900' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
+                  }`}>
+                  <p className="font-black text-base">{label}</p>
+                  <p className="text-zinc-500 text-xs mt-1">
+                    Fridays in June · {label === 'Elite Boys' ? '6–7 PM' : '7–8 PM'}
+                  </p>
+                </button>
+              ))}
+            </div>
 
             {/* Plan toggle */}
+            <p className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-2">Plan</p>
             <div className="grid grid-cols-2 gap-3 mb-6">
               {[
-                { id: 'dropin',  label: 'Drop-In',     price: '$50',  sub: 'Single session' },
+                { id: 'dropin',  label: 'Drop-In',     price: '$50',  sub: 'Pick your dates' },
                 { id: 'monthly', label: 'Full Series', price: '$150', sub: 'All 4 sessions' },
               ].map(opt => (
                 <button key={opt.id}
                   onClick={() => {
                     setGroupPlan(opt.id as 'dropin' | 'monthly')
-                    if (opt.id === 'monthly') setGroupSessions(GROUP_SESSIONS.map(s => s.id))
-                    else setGroupSessions([])
+                    if (opt.id === 'monthly' && groupTeam) {
+                      setGroupSessions(GROUP_SESSIONS.filter(s => s.group === groupTeam).map(s => s.id))
+                    } else {
+                      setGroupSessions([])
+                    }
                   }}
                   className={`rounded-2xl p-4 border text-center transition ${
                     groupPlan === opt.id ? 'border-[#cee800] bg-zinc-900' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
@@ -308,51 +338,65 @@ function BookingFlow() {
               ))}
             </div>
 
-            {/* Session cards grouped by program */}
-            <div className="space-y-5 mb-6">
-              {GROUP_LABELS.map(label => (
-                <div key={label}>
-                  <p className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-2">{label}</p>
-                  <div className="space-y-2">
-                    {GROUP_SESSIONS.filter(s => s.group === label).map(s => {
-                      const avail = slotAvail(s.id)
-                      const isFull = avail ? avail.available <= 0 : false
-                      const spotsLeft = avail ? avail.available : null
-                      const isSelected = groupSessions.includes(s.id)
-                      return (
-                      <button key={s.id}
-                        onClick={() => !isFull && toggleGroupSession(s.id)}
-                        disabled={isFull && !isSelected}
-                        className={`w-full text-left rounded-2xl p-4 border transition flex items-center gap-4 ${
-                          isFull && !isSelected
-                            ? 'border-zinc-800 bg-zinc-900/50 opacity-60 cursor-not-allowed'
-                            : isSelected
-                            ? 'border-[#cee800] bg-zinc-900'
-                            : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
-                        }`}>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-black text-base">{s.date}</p>
-                          <p className="text-[#cee800] text-sm font-semibold">{s.time}</p>
-                          {isFull ? (
-                            <p className="text-red-400 text-xs font-bold mt-0.5">FULL</p>
-                          ) : spotsLeft !== null && spotsLeft <= 4 ? (
-                            <p className="text-yellow-400 text-xs font-semibold mt-0.5">{spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left</p>
-                          ) : spotsLeft !== null ? (
-                            <p className="text-zinc-500 text-xs mt-0.5">{spotsLeft} spots available</p>
-                          ) : null}
-                        </div>
-                        <div className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition ${
-                          isSelected ? 'border-[#cee800] bg-[#cee800]' : 'border-zinc-600'
-                        }`}>
-                          {isSelected && <span className="text-black text-xs font-black">✓</span>}
-                        </div>
-                      </button>
-                      )
-                    })}
-                  </div>
+            {/* Session dates — only shown once a team is selected */}
+            {groupTeam && groupPlan === 'dropin' && (
+              <div className="space-y-2 mb-6">
+                <p className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-2">Select dates</p>
+                {GROUP_SESSIONS.filter(s => s.group === groupTeam).map(s => {
+                  const avail = slotAvail(s.id)
+                  const isFull = avail ? avail.available <= 0 : false
+                  const spotsLeft = avail ? avail.available : null
+                  const isSelected = groupSessions.includes(s.id)
+                  return (
+                    <button key={s.id}
+                      onClick={() => !isFull && toggleGroupSession(s.id)}
+                      disabled={isFull && !isSelected}
+                      className={`w-full text-left rounded-2xl p-4 border transition flex items-center gap-4 ${
+                        isFull && !isSelected
+                          ? 'border-zinc-800 bg-zinc-900/50 opacity-60 cursor-not-allowed'
+                          : isSelected
+                          ? 'border-[#cee800] bg-zinc-900'
+                          : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
+                      }`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-base">{s.date}</p>
+                        <p className="text-[#cee800] text-sm font-semibold">{s.time}</p>
+                        {isFull ? (
+                          <p className="text-red-400 text-xs font-bold mt-0.5">FULL</p>
+                        ) : spotsLeft !== null && spotsLeft <= 4 ? (
+                          <p className="text-yellow-400 text-xs font-semibold mt-0.5">{spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left</p>
+                        ) : spotsLeft !== null ? (
+                          <p className="text-zinc-500 text-xs mt-0.5">{spotsLeft} spots available</p>
+                        ) : null}
+                      </div>
+                      <div className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition ${
+                        isSelected ? 'border-[#cee800] bg-[#cee800]' : 'border-zinc-600'
+                      }`}>
+                        {isSelected && <span className="text-black text-xs font-black">✓</span>}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Full series summary */}
+            {groupTeam && groupPlan === 'monthly' && (
+              <div className="bg-zinc-900 border border-[#cee800]/30 rounded-2xl p-4 mb-6">
+                <p className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-3">All 4 sessions selected</p>
+                <div className="space-y-2">
+                  {GROUP_SESSIONS.filter(s => s.group === groupTeam).map(s => (
+                    <div key={s.id} className="flex items-center gap-3">
+                      <span className="text-[#cee800] text-xs font-black">✓</span>
+                      <div>
+                        <p className="text-sm font-semibold">{s.date}</p>
+                        <p className="text-zinc-500 text-xs">{s.time}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
