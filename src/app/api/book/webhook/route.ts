@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { sendGroupConfirmation, sendIndividualConfirmation } from '@/lib/emails'
 
 export async function POST(req: NextRequest) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
@@ -80,7 +81,8 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // Create group registrations for each selected slot
+  // Create group registrations for each selected slot (with capacity check)
+  const confirmedSessions: { group: string; date: string; time: string }[] = []
   if (meta.selected_slot_ids) {
     const selectedIds: string[] = JSON.parse(meta.selected_slot_ids)
     for (const staticId of selectedIds) {
@@ -88,23 +90,65 @@ export async function POST(req: NextRequest) {
       if (!slotAttrs) continue
       const { data: slot } = await admin
         .from('bookings')
-        .select('id')
+        .select('id, capacity')
         .eq('date', slotAttrs.date)
         .eq('hour', slotAttrs.hour)
         .eq('client', slotAttrs.client)
         .eq('is_group_slot', true)
         .maybeSingle()
-      if (slot) {
-        await admin.from('group_registrations').insert({
-          slot_id: slot.id,
-          player_name: meta.player_name,
-          parent_name: meta.parent_name || null,
-          email: meta.email || null,
-          phone: meta.phone || null,
-          stripe_session_id: session.id,
-          status: 'registered',
-        })
-      }
+      if (!slot) continue
+
+      // Check capacity before registering
+      const { count } = await admin
+        .from('group_registrations')
+        .select('*', { count: 'exact', head: true })
+        .eq('slot_id', slot.id)
+        .neq('status', 'cancelled')
+
+      if ((count ?? 0) >= (slot.capacity || 12)) continue // slot full, skip
+
+      await admin.from('group_registrations').insert({
+        slot_id: slot.id,
+        player_name: meta.player_name,
+        parent_name: meta.parent_name || null,
+        email: meta.email || null,
+        phone: meta.phone || null,
+        stripe_session_id: session.id,
+        status: 'registered',
+      })
+
+      const dateLabel = new Date(slotAttrs.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+      const hourNum = parseInt(slotAttrs.hour)
+      confirmedSessions.push({
+        group: slotAttrs.client,
+        date: dateLabel,
+        time: slotAttrs.hour === '6:00 PM' ? '6:00 PM – 7:00 PM' : '7:00 PM – 8:00 PM',
+      })
+    }
+  }
+
+  // Send confirmation email
+  const totalPaid = `$${((session.amount_total ?? 0) / 100).toFixed(2)}`
+  if (meta.email) {
+    if (confirmedSessions.length > 0) {
+      const isMonthly = meta.session_type === 'group_month'
+      await sendGroupConfirmation({
+        to: meta.email,
+        parentName: meta.parent_name,
+        playerName: meta.player_name,
+        sessions: confirmedSessions,
+        planLabel: isMonthly ? 'Full Series (All 4 sessions)' : 'Drop-In',
+        totalPaid,
+      })
+    } else if (['individual', 'semi', 'duo'].includes(meta.session_type)) {
+      await sendIndividualConfirmation({
+        to: meta.email,
+        parentName: meta.parent_name,
+        playerName: meta.player_name,
+        sessionType: meta.session_type,
+        preferredDate: meta.preferred_date || '',
+        totalPaid,
+      })
     }
   }
 

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 
 interface PromoCode {
@@ -89,20 +88,14 @@ export default function DiscountsPage() {
   return (
     <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
-          <Link href="/admin" className="text-zinc-500 hover:text-white transition">
-            <Image src="/logo.png" alt="PTG" width={36} height={36} />
-          </Link>
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Link href="/admin" className="text-zinc-500 hover:text-white text-sm">← Admin</Link>
-            <div>
-              <h1 className="text-2xl font-black text-[#cee800] tracking-widest">DISCOUNT CODES</h1>
-              <p className="text-zinc-400 text-sm">Manage Stripe promotion codes</p>
-            </div>
+            <h1 className="text-2xl font-black text-[#cee800] tracking-widest">DISCOUNT CODES</h1>
           </div>
           <button
             onClick={() => { setShowForm(v => !v); setError(''); setSuccess('') }}
-            className="ml-auto bg-[#cee800] text-black font-black px-4 py-2 rounded-xl hover:bg-[#d4f030] transition text-sm"
+            className="bg-[#cee800] text-black font-black px-4 py-2 rounded-xl hover:bg-[#d4f030] transition text-sm"
           >
             {showForm ? 'Cancel' : '+ New Code'}
           </button>

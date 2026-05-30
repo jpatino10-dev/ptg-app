@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
@@ -86,6 +86,8 @@ const TIME_PREFS = [
 const STEPS_INDIVIDUAL = ['Format', 'Focus', 'Player', 'Contact', 'Schedule', 'Review']
 const STEPS_GROUP       = ['Format', 'Sessions', 'Player', 'Contact', 'Review']
 
+type SlotAvailability = { id: string; registered: number; capacity: number; available: number }
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 function BookingFlow() {
@@ -95,6 +97,7 @@ function BookingFlow() {
   const [step, setStep]         = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError]       = useState('')
+  const [availability, setAvailability] = useState<SlotAvailability[]>([])
 
   const [format, setFormat]         = useState<string | null>(null)
   const [groupPlan, setGroupPlan]   = useState<'dropin' | 'monthly' | null>(null)
@@ -109,6 +112,14 @@ function BookingFlow() {
   const [schedule, setSchedule] = useState({
     preferred_days: [] as string[], time_pref: '', notes: '',
   })
+
+  useEffect(() => {
+    fetch('/api/group-slots').then(r => r.json()).then(setAvailability).catch(() => {})
+  }, [])
+
+  function slotAvail(id: string) {
+    return availability.find(a => a.id === id)
+  }
 
   const selectedFormat = FORMATS.find(f => f.id === format)
   const isGroup        = format === 'group'
@@ -309,24 +320,41 @@ function BookingFlow() {
                 <div key={label}>
                   <p className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-2">{label}</p>
                   <div className="space-y-2">
-                    {GROUP_SESSIONS.filter(s => s.group === label).map(s => (
-                      <button key={s.id} onClick={() => toggleGroupSession(s.id)}
+                    {GROUP_SESSIONS.filter(s => s.group === label).map(s => {
+                      const avail = slotAvail(s.id)
+                      const isFull = avail ? avail.available <= 0 : false
+                      const spotsLeft = avail ? avail.available : null
+                      const isSelected = groupSessions.includes(s.id)
+                      return (
+                      <button key={s.id}
+                        onClick={() => !isFull && toggleGroupSession(s.id)}
+                        disabled={isFull && !isSelected}
                         className={`w-full text-left rounded-2xl p-4 border transition flex items-center gap-4 ${
-                          groupSessions.includes(s.id)
+                          isFull && !isSelected
+                            ? 'border-zinc-800 bg-zinc-900/50 opacity-60 cursor-not-allowed'
+                            : isSelected
                             ? 'border-[#cee800] bg-zinc-900'
                             : 'border-zinc-800 bg-zinc-900 hover:border-zinc-600'
                         }`}>
                         <div className="flex-1 min-w-0">
                           <p className="font-black text-base">{s.date}</p>
                           <p className="text-[#cee800] text-sm font-semibold">{s.time}</p>
+                          {isFull ? (
+                            <p className="text-red-400 text-xs font-bold mt-0.5">FULL</p>
+                          ) : spotsLeft !== null && spotsLeft <= 4 ? (
+                            <p className="text-yellow-400 text-xs font-semibold mt-0.5">{spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left</p>
+                          ) : spotsLeft !== null ? (
+                            <p className="text-zinc-500 text-xs mt-0.5">{spotsLeft} spots available</p>
+                          ) : null}
                         </div>
                         <div className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition ${
-                          groupSessions.includes(s.id) ? 'border-[#cee800] bg-[#cee800]' : 'border-zinc-600'
+                          isSelected ? 'border-[#cee800] bg-[#cee800]' : 'border-zinc-600'
                         }`}>
-                          {groupSessions.includes(s.id) && <span className="text-black text-xs font-black">✓</span>}
+                          {isSelected && <span className="text-black text-xs font-black">✓</span>}
                         </div>
                       </button>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               ))}

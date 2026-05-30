@@ -11,6 +11,7 @@ type Registration = {
   email: string | null
   phone: string | null
   status: 'registered' | 'attended' | 'absent' | 'cancelled'
+  stripe_session_id: string | null
   notes: string | null
   created_at: string
 }
@@ -41,6 +42,8 @@ export default function GroupSessionRosterPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [addForm, setAddForm] = useState({ player_name: '', parent_name: '', email: '', phone: '' })
   const [adding, setAdding] = useState(false)
+  const [cancelTarget, setCancelTarget] = useState<Registration | null>(null)
+  const [cancelling, setCancelling] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -75,6 +78,20 @@ export default function GroupSessionRosterPage() {
       body: JSON.stringify({ registrationId }),
     })
     setUpdatingId(null)
+    load()
+  }
+
+  async function cancelRegistration(reg: Registration, issueRefund: boolean) {
+    setCancelling(true)
+    const res = await fetch(`/api/group-registrations/${slotId}/refund`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ registrationId: reg.id, issueRefund }),
+    })
+    const data = await res.json()
+    setCancelling(false)
+    setCancelTarget(null)
+    if (data.refundError) alert(`Cancelled, but refund failed: ${data.refundError}`)
     load()
   }
 
@@ -217,6 +234,15 @@ export default function GroupSessionRosterPage() {
                         <span className="text-xs text-zinc-600 font-semibold">Cancelled</span>
                       )}
 
+                      {reg.status !== 'cancelled' && (
+                        <button
+                          onClick={() => setCancelTarget(reg)}
+                          disabled={updatingId === reg.id}
+                          className="text-xs font-bold px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-500 hover:border-red-600 hover:text-red-400 transition ml-1">
+                          Cancel
+                        </button>
+                      )}
+
                       <button
                         onClick={() => removeRegistration(reg.id)}
                         disabled={updatingId === reg.id}
@@ -231,6 +257,51 @@ export default function GroupSessionRosterPage() {
             </div>
           )}
         </div>
+
+        {/* Cancel registration modal */}
+        {cancelTarget && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setCancelTarget(null)}>
+            <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+              <h2 className="font-black text-lg mb-1">Cancel Registration</h2>
+              <p className="text-zinc-400 text-sm mb-6">
+                Cancel <span className="text-white font-semibold">{cancelTarget.player_name}</span>'s spot in this session?
+              </p>
+
+              {cancelTarget.stripe_session_id ? (
+                <div className="space-y-3">
+                  <p className="text-zinc-400 text-sm">This registration was paid online. Would you like to issue a refund?</p>
+                  <button
+                    onClick={() => cancelRegistration(cancelTarget, true)}
+                    disabled={cancelling}
+                    className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl transition disabled:opacity-50">
+                    {cancelling ? 'Processing...' : 'Cancel + Issue Refund'}
+                  </button>
+                  <button
+                    onClick={() => cancelRegistration(cancelTarget, false)}
+                    disabled={cancelling}
+                    className="w-full py-3 border border-zinc-700 text-zinc-300 font-semibold rounded-xl hover:border-zinc-500 transition disabled:opacity-50">
+                    Cancel Without Refund
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <button
+                    onClick={() => cancelRegistration(cancelTarget, false)}
+                    disabled={cancelling}
+                    className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl transition disabled:opacity-50">
+                    {cancelling ? 'Cancelling...' : 'Yes, Cancel Registration'}
+                  </button>
+                  <button
+                    onClick={() => setCancelTarget(null)}
+                    disabled={cancelling}
+                    className="w-full py-3 border border-zinc-700 text-zinc-400 rounded-xl hover:border-zinc-500 transition">
+                    Never mind
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Add player modal */}
         {showAdd && (
