@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
   const fee = Math.round(priceInfo.amount * 0.035)
   const total = priceInfo.amount + fee
 
-  const session = await stripe.checkout.sessions.create({
+  let session
+  try {
+    session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     mode: 'payment',
     line_items: [
@@ -57,9 +59,13 @@ export async function POST(req: NextRequest) {
       preferred_date: preferred_date || '',
       selected_slot_ids: selected_slot_ids ? JSON.stringify(selected_slot_ids) : '',
     },
-    success_url: `${siteUrl}/book/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${siteUrl}/book?cancelled=true`,
-  })
+      success_url: `${siteUrl}/book/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/book?cancelled=true`,
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Stripe error'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 
   return NextResponse.json({ url: session.url })
 }
