@@ -49,7 +49,7 @@ function ShirtOrder() {
         <div className="max-w-xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Image src="/logo.png" alt="PTG" width={32} height={32} />
-            <p className="font-black text-[#cee800] tracking-widest text-sm">PRO TRAINING GROUP</p>
+            <p className="font-black text-[#cee800] tracking-widest text-sm">PATINO TRAINING GROUNDS</p>
           </div>
           <a href="https://trainatptg.com" className="text-zinc-500 text-xs hover:text-white transition">
             trainatptg.com

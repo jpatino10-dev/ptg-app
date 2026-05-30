@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "PTG Management",
-  description: "Pro Training Group coach and player management",
+  description: "Patino Training Grounds coach and player management",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

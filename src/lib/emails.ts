@@ -40,7 +40,7 @@ export async function sendGroupConfirmation(opts: GroupConfirmationOptions) {
       <p style="color:#71717a;font-size:13px;">Questions? Reply to this email or text us.</p>
 
       <hr style="border:none;border-top:1px solid #27272a;margin:24px 0;" />
-      <p style="color:#3f3f46;font-size:11px;margin:0;">Pro Training Group · trainatptg.com</p>
+      <p style="color:#3f3f46;font-size:11px;margin:0;">Patino Training Grounds · trainatptg.com</p>
     </div>
   `
 
@@ -87,7 +87,7 @@ export async function sendIndividualConfirmation(opts: IndividualConfirmationOpt
       <p style="color:#71717a;font-size:13px;">We'll reach out within 24 hours to confirm your coach and exact session time.</p>
 
       <hr style="border:none;border-top:1px solid #27272a;margin:24px 0;" />
-      <p style="color:#3f3f46;font-size:11px;margin:0;">Pro Training Group · trainatptg.com</p>
+      <p style="color:#3f3f46;font-size:11px;margin:0;">Patino Training Grounds · trainatptg.com</p>
     </div>
   `
 
