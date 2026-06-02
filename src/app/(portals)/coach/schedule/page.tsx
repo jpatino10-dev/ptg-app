@@ -20,14 +20,26 @@ export default function CoachSchedulePage() {
   const [sessions, setSessions]   = useState<Session[]>([])
   const [loading, setLoading]     = useState(true)
   const [tab, setTab]             = useState<'upcoming' | 'past'>('upcoming')
-  const [reportSession, setReportSession] = useState<Session | null>(null)
-  const [reportsExist, setReportsExist]   = useState<Set<string>>(new Set())
+  const [reportSession, setReportSession]   = useState<Session | null>(null)
+  const [reportsExist, setReportsExist]     = useState<Set<string>>(new Set())
+  const [markingComplete, setMarkingComplete] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetch('/api/coach/sessions')
       .then(r => r.json())
       .then(d => { setSessions(d); setLoading(false) })
   }, [])
+
+  async function markComplete(id: string) {
+    setMarkingComplete(s => new Set([...s, id]))
+    await fetch(`/api/coach/sessions/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'completed' }),
+    })
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, status: 'completed' } : s))
+    setMarkingComplete(s => { const n = new Set(s); n.delete(id); return n })
+  }
 
   function formatDuration(min: number | null) {
     if (!min) return null
@@ -100,9 +112,19 @@ export default function CoachSchedulePage() {
                         </div>
                         <div className="flex flex-col items-end gap-1.5 shrink-0">
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                            s.status === 'confirmed' || s.status === 'paid'
-                              ? 'bg-[#cee800]/20 text-[#cee800]' : 'bg-zinc-700 text-zinc-400'
+                            s.status === 'completed'
+                              ? 'bg-[#00e676]/20 text-[#00e676]'
+                              : s.status === 'confirmed' || s.status === 'paid'
+                                ? 'bg-[#cee800]/20 text-[#cee800]'
+                                : 'bg-zinc-700 text-zinc-400'
                           }`}>{s.status?.replace('_', ' ')}</span>
+                          {tab === 'past' && s.status !== 'completed' && (
+                            <button onClick={() => markComplete(s.id)}
+                              disabled={markingComplete.has(s.id)}
+                              className="text-xs font-bold px-3 py-1 rounded-full border border-[#00e676]/40 text-[#00e676] hover:bg-[#00e676]/10 transition disabled:opacity-40">
+                              {markingComplete.has(s.id) ? '...' : 'Mark Complete'}
+                            </button>
+                          )}
                           <button onClick={() => setReportSession(s)}
                             className={`text-xs font-bold px-3 py-1 rounded-full transition ${
                               reportsExist.has(s.id)
@@ -135,6 +157,7 @@ export default function CoachSchedulePage() {
 }
 
 function fmtHour(h: string) {
+  if (/AM|PM/i.test(h)) return h  // already formatted e.g. "6:00 PM"
   const [hr, min] = h.split(':').map(Number)
   return `${hr % 12 || 12}:${String(min || 0).padStart(2, '0')} ${hr >= 12 ? 'PM' : 'AM'}`
 }

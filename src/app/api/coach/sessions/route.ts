@@ -33,43 +33,28 @@ export async function GET(req: NextRequest) {
   const ctx = await verifyCoach()
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const isAdminOrDirector = ctx.role === 'admin' || ctx.role === 'director'
+  // Use first name to handle mismatches between profile full_name ("Josh Patino")
+  // and the name stored on sessions ("Coach Josh")
+  const firstName = (ctx.fullName || '').split(' ')[0]
+  const namePattern = firstName ? `%${firstName}%` : `%${ctx.fullName}%`
 
-  // Personal sessions — matched by coach name
-  const { data: personal, error: e1 } = await ctx.service
+  const { data: sessions, error: queryError } = await ctx.service
     .from('bookings')
     .select(SELECT)
-    .ilike('coach', `%${ctx.fullName}%`)
+    .ilike('coach', namePattern)
     .order('date', { ascending: false })
-
-  // Admins and directors also see all group slots (is_group_slot = true)
-  let groups: typeof personal = []
-  let e2 = null
-  if (isAdminOrDirector) {
-    const { data, error } = await ctx.service
-      .from('bookings')
-      .select(SELECT)
-      .eq('is_group_slot', true)
-      .order('date', { ascending: false })
-    groups = data || []
-    e2 = error
-  }
 
   if (debug) {
     return NextResponse.json({
       role: ctx.role,
       fullName: ctx.fullName,
-      personalCount: personal?.length ?? 0,
-      personalError: e1?.message ?? null,
-      groupCount: groups.length,
-      groupError: e2?.message ?? null,
-      groupSample: groups.slice(0, 2),
+      firstName,
+      namePattern,
+      count: sessions?.length ?? 0,
+      error: queryError?.message ?? null,
+      sample: (sessions || []).slice(0, 3),
     })
   }
 
-  // Merge and deduplicate by id
-  const all = [...(personal || []), ...groups]
-  const unique = [...new Map(all.map(s => [s.id, s])).values()]
-
-  return NextResponse.json(unique)
+  return NextResponse.json(sessions || [])
 }

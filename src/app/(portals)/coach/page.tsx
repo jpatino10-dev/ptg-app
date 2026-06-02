@@ -16,6 +16,7 @@ const TYPE_COLORS: Record<string, string> = {
 }
 
 function fmtHour(h: string) {
+  if (/AM|PM/i.test(h)) return h  // already formatted e.g. "6:00 PM"
   const [hr, min] = h.split(':').map(Number)
   return `${hr % 12 || 12}:${String(min || 0).padStart(2, '0')} ${hr >= 12 ? 'PM' : 'AM'}`
 }
