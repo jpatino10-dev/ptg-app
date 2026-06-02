@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import InviteCoachForm from '@/components/InviteCoachForm'
 import SetRoleButton from '@/components/SetRoleButton'
+import RemoveCoachButton from '@/components/RemoveCoachButton'
 
 const RATES: Record<string, { individual: number; semi: number; group: number }> = {
   aidan:  { individual: 50,  semi: 45, group: 150 },
@@ -18,11 +19,17 @@ export default async function CoachesPage() {
   const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   const isAdmin = myProfile?.role === 'admin'
 
-  const { data: coaches } = await supabase
-    .from('profiles')
-    .select('id, full_name, email, role, created_at')
-    .in('role', ['coach', 'director'])
-    .order('full_name')
+  const [{ data: coaches }, { data: nameOnlyCoaches }] = await Promise.all([
+    supabase.from('profiles').select('id, full_name, email, role, created_at').in('role', ['coach', 'director']).order('full_name'),
+    supabase.from('coaches').select('id, name, created_at').order('name'),
+  ])
+
+  // Names that already have accounts — used to hide duplicates from name-only list
+  const accountNames = new Set((coaches || []).map(c => c.full_name?.toLowerCase().trim()))
+
+  const pendingCoaches = (nameOnlyCoaches || []).filter(
+    c => !accountNames.has(c.name?.toLowerCase().trim())
+  )
 
   const today = new Date().toISOString().split('T')[0]
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -51,13 +58,14 @@ export default async function CoachesPage() {
           <InviteCoachForm />
         </div>
 
+        {/* Coaches with accounts */}
         {(!coaches || coaches.length === 0) ? (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center">
-            <p className="text-zinc-400 mb-2">No coaches yet.</p>
-            <p className="text-zinc-600 text-sm">Create coach accounts in Supabase → Authentication → Users, then set their role to <code className="text-[#cee800]">coach</code> in the profiles table.</p>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center mb-6">
+            <p className="text-zinc-400 mb-2">No coaches with accounts yet.</p>
+            <p className="text-zinc-600 text-sm">Use <span className="text-[#cee800] font-semibold">+ Add Coach</span> to add coaches to the assignable list or send an invite.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             {coaches.map(coach => {
               const sessions = sessionsForCoach(coach.full_name || '')
               const completed = sessions.filter(s => s.status === 'confirmed' || s.status === 'paid')
@@ -116,9 +124,35 @@ export default async function CoachesPage() {
           </div>
         )}
 
+        {/* Name-only coaches (no account yet) */}
+        {pendingCoaches.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-sm font-black uppercase tracking-widest text-zinc-500 mb-3">Assignable — No Account Yet</h2>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl divide-y divide-zinc-800">
+              {pendingCoaches.map(coach => (
+                <div key={coach.id} className="flex items-center justify-between px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-zinc-700 flex items-center justify-center text-zinc-400 font-black text-sm">
+                      {coach.name.split(' ').map((n: string) => n[0]).join('').slice(0,2)}
+                    </div>
+                    <div>
+                      <p className="font-bold">{coach.name}</p>
+                      <p className="text-zinc-500 text-xs">No account · assignable only</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-600">{sessionsForCoach(coach.name).length} sessions (30d)</span>
+                    {isAdmin && <RemoveCoachButton id={coach.id} name={coach.name} />}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Recent sessions table */}
         {recentBookings && recentBookings.length > 0 && (
-          <div className="mt-8">
+          <div className="mt-4">
             <h2 className="text-lg font-black mb-4 text-zinc-300">Recent Sessions (Last 30 Days)</h2>
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
               <table className="w-full text-sm">
