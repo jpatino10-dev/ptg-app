@@ -25,21 +25,35 @@ async function verifyCoach() {
   }
 }
 
+const SELECT = 'id,date,hour,coach,type,status,price,player_name,parent_name,notes,duration_minutes,client'
+
 export async function GET() {
   const ctx = await verifyCoach()
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Admins and directors see their personal sessions + all group slots.
-  // Coaches see only sessions where they are the assigned coach.
-  const filter = (ctx.role === 'admin' || ctx.role === 'director')
-    ? `coach.ilike.*${ctx.fullName}*,is_group_slot.eq.true`
-    : `coach.ilike.*${ctx.fullName}*`
+  const isAdminOrDirector = ctx.role === 'admin' || ctx.role === 'director'
 
-  const { data: sessions } = await ctx.service
+  // Personal sessions — matched by coach name
+  const { data: personal } = await ctx.service
     .from('bookings')
-    .select('id,date,hour,coach,type,status,price,player_name,parent_name,notes,duration_minutes,client')
-    .or(filter)
+    .select(SELECT)
+    .ilike('coach', `%${ctx.fullName}%`)
     .order('date', { ascending: false })
 
-  return NextResponse.json(sessions || [])
+  // Admins and directors also see all group slots regardless of coach name
+  let groups: typeof personal = []
+  if (isAdminOrDirector) {
+    const { data } = await ctx.service
+      .from('bookings')
+      .select(SELECT)
+      .eq('type', 'group')
+      .order('date', { ascending: false })
+    groups = data || []
+  }
+
+  // Merge and deduplicate by id
+  const all = [...(personal || []), ...groups]
+  const unique = [...new Map(all.map(s => [s.id, s])).values()]
+
+  return NextResponse.json(unique)
 }
