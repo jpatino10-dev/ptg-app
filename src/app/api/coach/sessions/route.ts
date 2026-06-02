@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 
 async function verifyCoach() {
@@ -27,8 +27,8 @@ async function verifyCoach() {
 
 const SELECT = 'id,date,hour,coach,type,status,price,player_name,parent_name,notes,duration_minutes,client'
 
-export async function GET(req: Request) {
-  const debug = new URL(req.url).searchParams.has('debug')
+export async function GET(req: NextRequest) {
+  const debug = req.nextUrl.searchParams.has('debug')
 
   const ctx = await verifyCoach()
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -42,14 +42,14 @@ export async function GET(req: Request) {
     .ilike('coach', `%${ctx.fullName}%`)
     .order('date', { ascending: false })
 
-  // Admins and directors also see all group slots regardless of coach name
+  // Admins and directors also see all group slots (is_group_slot = true)
   let groups: typeof personal = []
   let e2 = null
   if (isAdminOrDirector) {
     const { data, error } = await ctx.service
       .from('bookings')
       .select(SELECT)
-      .eq('type', 'group')
+      .eq('is_group_slot', true)
       .order('date', { ascending: false })
     groups = data || []
     e2 = error
@@ -57,9 +57,13 @@ export async function GET(req: Request) {
 
   if (debug) {
     return NextResponse.json({
-      role: ctx.role, fullName: ctx.fullName,
-      personalCount: personal?.length ?? 0, personalError: e1,
-      groupCount: groups.length, groupError: e2,
+      role: ctx.role,
+      fullName: ctx.fullName,
+      personalCount: personal?.length ?? 0,
+      personalError: e1?.message ?? null,
+      groupCount: groups.length,
+      groupError: e2?.message ?? null,
+      groupSample: groups.slice(0, 2),
     })
   }
 
