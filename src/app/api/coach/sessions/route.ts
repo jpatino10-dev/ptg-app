@@ -32,8 +32,8 @@ export async function GET() {
   // Admins and directors see their personal sessions + all group slots.
   // Coaches see only sessions where they are the assigned coach.
   const filter = (ctx.role === 'admin' || ctx.role === 'director')
-    ? `coach.ilike.%${ctx.fullName}%,is_group_slot.eq.true`
-    : `coach.ilike.%${ctx.fullName}%`
+    ? `coach.ilike.*${ctx.fullName}*,is_group_slot.eq.true`
+    : `coach.ilike.*${ctx.fullName}*`
 
   const { data: sessions } = await ctx.service
     .from('bookings')
