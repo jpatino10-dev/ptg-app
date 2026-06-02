@@ -17,7 +17,7 @@ async function verifyCoach() {
     .select('role, full_name')
     .eq('id', user.id)
     .single()
-  if (!['coach', 'admin', 'director'].includes(profile?.role ?? '')) return null
+  if (!profile || !['coach', 'admin', 'director'].includes(profile.role ?? '')) return null
   return {
     service: createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!),
     fullName: profile.full_name as string,
