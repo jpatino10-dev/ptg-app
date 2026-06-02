@@ -77,8 +77,10 @@ export default function EditSessionModal({ booking, isAdmin = false, onClose, on
     fetch('/api/coaches').then(r => r.json()).then(data => {
       if (Array.isArray(data)) {
         setCoaches(data)
-        // If coach not yet set (no existing booking coach), default to first
-        setCoach(prev => prev || data[0] || '')
+        // If the saved coach name isn't in the list (e.g. stored as a full name
+        // like "Josh Patino" vs "Coach Josh"), fall back to the first option so
+        // the visible selection always matches the React state.
+        setCoach(prev => (prev && data.includes(prev)) ? prev : (data[0] || ''))
       }
     })
   }, [])

@@ -23,7 +23,7 @@ export async function GET() {
 
   const { data: bookings } = await admin
     .from('bookings')
-    .select('id,date,hour,coach,type,status,price,player_name,parent_name,email,client,source')
+    .select('id,date,hour,coach,type,status,price,player_name,parent_name,email,client,source,coach_pay,coach_pay_settled,director_pay,director_pay_settled')
     .order('date', { ascending: false })
 
   return NextResponse.json(bookings || [])

@@ -3,25 +3,23 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 
-type Tab = 'overview' | 'transactions' | 'coaches'
+type Tab = 'overview' | 'transactions' | 'coaches' | 'revenue'
 
 type Booking = {
   id: string; date: string; hour: string; coach: string; type: string
   status: string; price: string | null; player_name: string | null
   parent_name: string | null; email: string | null; client: string; source: string | null
+  coach_pay: number | null; coach_pay_settled: boolean
+  director_pay: number | null; director_pay_settled: boolean
 }
 
-const PAID_STATUSES  = ['scheduled','confirmed','paid','completed']
+const PAID_STATUSES    = ['scheduled','confirmed','paid','completed']
+const BOOKED_STATUSES  = ['scheduled','confirmed','paid']
+const ACTUAL_STATUSES  = ['completed']
 const SESSION_COLORS: Record<string, string> = {
   individual: '#cee800', semi: '#00e5ff', group: '#00e676', camp: '#b388ff', duo: '#ff6b35',
 }
 
-// Coach base rates per session type
-const COACH_RATES: Record<string, Record<string, number>> = {
-  'Coach Aidan': { individual: 50,  semi: 45, group: 0,   camp: 50  },
-  'Coach A':     { individual: 75,  semi: 55, group: 0,   camp: 75  },
-  'Coach Josh':  { individual: 105, semi: 85, group: 0,   camp: 105 },
-}
 
 function fmt(d: Date) {
   return d.toISOString().split('T')[0]
@@ -63,15 +61,24 @@ export default function PaymentsPage() {
 
   const paid = useMemo(() => bookings.filter(b => PAID_STATUSES.includes(b.status)), [bookings])
 
-  const stats = useMemo(() => ({
-    allTime:   revenue(bookings),
-    thisMonth: revenue(bookings.filter(b => b.date >= monthStart)),
-    thisWeek:  revenue(bookings.filter(b => b.date >= weekStart)),
-    today:     revenue(bookings.filter(b => b.date === today)),
-    pending:   bookings.filter(b => b.status === 'pending_payment').reduce((s,b) => s + parseFloat(b.price||'0'), 0),
-    totalSessions: paid.length,
-    avgSession: paid.length ? revenue(bookings) / paid.length : 0,
-  }), [bookings, paid, today, weekStart, monthStart])
+  const stats = useMemo(() => {
+    const actual  = bookings.filter(b => ACTUAL_STATUSES.includes(b.status))
+    const booked  = bookings.filter(b => BOOKED_STATUSES.includes(b.status))
+    const actualRev = actual.reduce((s, b) => s + parseFloat(b.price || '0'), 0)
+    const bookedRev = booked.reduce((s, b) => s + parseFloat(b.price || '0'), 0)
+    return {
+      actualRevenue:  actualRev,
+      bookedRevenue:  bookedRev,
+      actualSessions: actual.length,
+      bookedSessions: booked.length,
+      thisMonth: revenue(bookings.filter(b => b.date >= monthStart)),
+      thisWeek:  revenue(bookings.filter(b => b.date >= weekStart)),
+      today:     revenue(bookings.filter(b => b.date === today)),
+      pending:   bookings.filter(b => b.status === 'pending_payment').reduce((s,b) => s + parseFloat(b.price||'0'), 0),
+      totalSessions: paid.length,
+      avgSession: paid.length ? revenue(bookings) / paid.length : 0,
+    }
+  }, [bookings, paid, today, weekStart, monthStart])
 
   // ── Unique coaches ───────────────────────────────────────────
   const coaches = useMemo(() => [...new Set(bookings.map(b => b.coach).filter(Boolean))].sort(), [bookings])
@@ -95,19 +102,114 @@ export default function PaymentsPage() {
 
   // ── Coach earnings ───────────────────────────────────────────
   const coachEarnings = useMemo(() => {
-    const map: Record<string, { sessions: number; earned: number; byType: Record<string,number> }> = {}
-    paid.forEach(b => {
+    const map: Record<string, { sessions: Booking[]; earned: number; settled: number }> = {}
+    bookings.forEach(b => {
+      if (!b.coach_pay) return
       const name = b.coach || 'Unknown'
-      if (!map[name]) map[name] = { sessions: 0, earned: 0, byType: {} }
-      map[name].sessions++
-      map[name].byType[b.type] = (map[name].byType[b.type] || 0) + 1
-      // Coach rate lookup
-      const rateKey = Object.keys(COACH_RATES).find(k => name.toLowerCase().includes(k.split(' ')[1]?.toLowerCase() || ''))
-      const rate = rateKey ? (COACH_RATES[rateKey][b.type] || 0) : 0
-      map[name].earned += rate
+      if (!map[name]) map[name] = { sessions: [], earned: 0, settled: 0 }
+      map[name].sessions.push(b)
+      map[name].earned += b.coach_pay
+      if (b.coach_pay_settled) map[name].settled += b.coach_pay
     })
     return Object.entries(map).sort((a,b) => b[1].earned - a[1].earned)
-  }, [paid])
+  }, [bookings])
+
+  // Director override earnings (all sessions with director_pay set)
+  const directorEarnings = useMemo(() => {
+    const sessions = bookings.filter(b => b.director_pay)
+    const earned   = sessions.reduce((s, b) => s + (b.director_pay ?? 0), 0)
+    const settled  = sessions.filter(b => b.director_pay_settled).reduce((s, b) => s + (b.director_pay ?? 0), 0)
+    return { sessions, earned, settled }
+  }, [bookings])
+
+  async function markSettled(bookingId: string, settled: boolean) {
+    await fetch(`/api/sessions/${bookingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coach_pay_settled: settled }),
+    })
+    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, coach_pay_settled: settled } : b))
+  }
+
+  async function markAllSettled(sessions: Booking[]) {
+    const unsettled = sessions.filter(s => !s.coach_pay_settled)
+    await Promise.all(unsettled.map(s => markSettled(s.id, true)))
+  }
+
+  // ── Revenue tab calculations ─────────────────────────────────
+  const revenueData = useMemo(() => {
+    const now = new Date()
+    // Week: Sun–Sat
+    const wStart = new Date(now); wStart.setDate(now.getDate() - now.getDay()); wStart.setHours(0,0,0,0)
+    const prevWStart = new Date(wStart); prevWStart.setDate(wStart.getDate() - 7)
+    const prevWEnd   = new Date(wStart); prevWEnd.setDate(wStart.getDate() - 1)
+    const weekStartStr    = fmt(wStart)
+    const prevWeekStartStr = fmt(prevWStart)
+    const prevWeekEndStr   = fmt(prevWEnd)
+    // Month
+    const mStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const prevMStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const prevMEnd   = new Date(now.getFullYear(), now.getMonth(), 0)
+    const monthStartStr    = fmt(mStart)
+    const prevMonthStartStr = fmt(prevMStart)
+    const prevMonthEndStr   = fmt(prevMEnd)
+    const todayStr = fmt(now)
+
+    const rev = (b: Booking) => parseFloat(b.price || '0')
+    const cp  = (b: Booking) => b.coach_pay ?? 0
+
+    const thisWeek  = bookings.filter(b => b.date >= weekStartStr && b.date <= todayStr && PAID_STATUSES.includes(b.status))
+    const lastWeek  = bookings.filter(b => b.date >= prevWeekStartStr && b.date <= prevWeekEndStr && PAID_STATUSES.includes(b.status))
+    const thisMonth = bookings.filter(b => b.date >= monthStartStr && b.date <= todayStr && PAID_STATUSES.includes(b.status))
+    const lastMonth = bookings.filter(b => b.date >= prevMonthStartStr && b.date <= prevMonthEndStr && PAID_STATUSES.includes(b.status))
+
+    const sum = (arr: Booking[], fn: (b: Booking) => number) => arr.reduce((s, b) => s + fn(b), 0)
+
+    const weekRev  = sum(thisWeek, rev);  const weekPay  = sum(thisWeek, cp)
+    const lWeekRev = sum(lastWeek, rev);  const lWeekPay = sum(lastWeek, cp)
+    const monRev   = sum(thisMonth, rev); const monPay   = sum(thisMonth, cp)
+    const lMonRev  = sum(lastMonth, rev); const lMonPay  = sum(lastMonth, cp)
+
+    // By coach — group all paid bookings
+    const coachMap: Record<string, { sessions: number; revenue: number; coachPay: number }> = {}
+    bookings.filter(b => PAID_STATUSES.includes(b.status)).forEach(b => {
+      const name = b.coach || 'Unassigned'
+      if (!coachMap[name]) coachMap[name] = { sessions: 0, revenue: 0, coachPay: 0 }
+      coachMap[name].sessions++
+      coachMap[name].revenue  += rev(b)
+      coachMap[name].coachPay += cp(b)
+    })
+    const byCoach = Object.entries(coachMap).sort((a, b) => b[1].revenue - a[1].revenue)
+
+    return {
+      weekRev, weekPay, weekProfit: weekRev - weekPay, weekSessions: thisWeek.length,
+      lWeekRev, lWeekPay, lWeekProfit: lWeekRev - lWeekPay, lWeekSessions: lastWeek.length,
+      monRev, monPay, monProfit: monRev - monPay, monSessions: thisMonth.length,
+      lMonRev, lMonPay, lMonProfit: lMonRev - lMonPay, lMonSessions: lastMonth.length,
+      byCoach,
+    }
+  }, [bookings])
+
+  function delta(current: number, previous: number) {
+    const diff = current - previous
+    const pct  = previous > 0 ? ((diff / previous) * 100).toFixed(0) : null
+    const sign = diff >= 0 ? '+' : ''
+    return { diff, pct, label: `${sign}$${Math.abs(diff).toFixed(0)}${pct ? ` (${sign}${pct}%)` : ''}`, up: diff >= 0 }
+  }
+
+  async function markDirectorSettled(bookingId: string, settled: boolean) {
+    await fetch(`/api/sessions/${bookingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ director_pay_settled: settled }),
+    })
+    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, director_pay_settled: settled } : b))
+  }
+
+  async function markAllDirectorSettled() {
+    const unsettled = directorEarnings.sessions.filter(s => !s.director_pay_settled)
+    await Promise.all(unsettled.map(s => markDirectorSettled(s.id, true)))
+  }
 
   // ── Revenue by type ──────────────────────────────────────────
   const byType = useMemo(() => {
@@ -115,7 +217,7 @@ export default function PaymentsPage() {
     paid.forEach(b => {
       map[b.type] = (map[b.type] || 0) + parseFloat(b.price || '0')
     })
-    return Object.entries(map).sort((a,b) => b[1]-a[1])
+    return Object.entries(map).sort((a, b) => b[1] - a[1])
   }, [paid])
 
   function exportCSV() {
@@ -146,6 +248,7 @@ export default function PaymentsPage() {
           </div>
           <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-0.5">
             <button className={tabCls('overview')}     onClick={() => setTab('overview')}>Overview</button>
+            <button className={tabCls('revenue')}      onClick={() => setTab('revenue')}>Revenue</button>
             <button className={tabCls('transactions')} onClick={() => setTab('transactions')}>Transactions</button>
             <button className={tabCls('coaches')}      onClick={() => setTab('coaches')}>Coach Earnings</button>
           </div>
@@ -156,13 +259,35 @@ export default function PaymentsPage() {
         {/* ── OVERVIEW ── */}
         {!loading && tab === 'overview' && (
           <div className="space-y-6">
-            {/* Revenue stats */}
+            {/* Primary: Actual vs Booked */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-zinc-900 border border-[#00e676]/30 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-[#00e676]" />
+                  <p className="text-[#00e676] text-xs font-bold uppercase tracking-wider">Actual Revenue</p>
+                </div>
+                <p className="text-4xl font-black text-white">${stats.actualRevenue.toFixed(0)}</p>
+                <p className="text-zinc-500 text-sm mt-2">{stats.actualSessions} completed session{stats.actualSessions !== 1 ? 's' : ''}</p>
+                <p className="text-zinc-600 text-xs mt-1">Sessions marked complete by coach</p>
+              </div>
+              <div className="bg-zinc-900 border border-[#cee800]/30 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-[#cee800]" />
+                  <p className="text-[#cee800] text-xs font-bold uppercase tracking-wider">Booked Revenue</p>
+                </div>
+                <p className="text-4xl font-black text-white">${stats.bookedRevenue.toFixed(0)}</p>
+                <p className="text-zinc-500 text-sm mt-2">{stats.bookedSessions} upcoming session{stats.bookedSessions !== 1 ? 's' : ''}</p>
+                <p className="text-zinc-600 text-xs mt-1">Confirmed &amp; paid, not yet completed</p>
+              </div>
+            </div>
+
+            {/* Period breakdown */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'All Time',    value: stats.allTime,   sub: `${paid.length} sessions` },
-                { label: 'This Month',  value: stats.thisMonth, sub: 'current month' },
+                { label: 'This Month',  value: stats.thisMonth, sub: 'all paid statuses' },
                 { label: 'This Week',   value: stats.thisWeek,  sub: 'current week' },
                 { label: 'Today',       value: stats.today,     sub: fmt(new Date()) },
+                { label: 'Avg/Session', value: stats.avgSession, sub: `${paid.length} total sessions` },
               ].map(({ label, value, sub }) => (
                 <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
                   <p className="text-zinc-400 text-xs mb-1">{label}</p>
@@ -172,16 +297,11 @@ export default function PaymentsPage() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
                 <p className="text-zinc-400 text-xs mb-1">Pending Payment</p>
                 <p className="text-3xl font-black text-orange-400">${stats.pending.toFixed(0)}</p>
                 <p className="text-zinc-600 text-xs mt-1">{bookings.filter(b=>b.status==='pending_payment').length} bookings awaiting payment</p>
-              </div>
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-                <p className="text-zinc-400 text-xs mb-1">Avg per Session</p>
-                <p className="text-3xl font-black">${stats.avgSession.toFixed(0)}</p>
-                <p className="text-zinc-600 text-xs mt-1">across all paid sessions</p>
               </div>
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
                 <p className="text-zinc-400 text-xs mb-1">Total Sessions</p>
@@ -195,7 +315,8 @@ export default function PaymentsPage() {
               <h2 className="font-black text-lg mb-4">Revenue by Session Type</h2>
               <div className="space-y-3">
                 {byType.map(([type, amount]) => {
-                  const pct = stats.allTime ? (amount / stats.allTime) * 100 : 0
+                  const total = stats.actualRevenue + stats.bookedRevenue
+                  const pct = total ? (amount / total) * 100 : 0
                   return (
                     <div key={type}>
                       <div className="flex justify-between text-sm mb-1">
@@ -214,6 +335,130 @@ export default function PaymentsPage() {
           </div>
         )}
 
+        {/* ── REVENUE ── */}
+        {!loading && tab === 'revenue' && (() => {
+          const r = revenueData
+          const wDelta = delta(r.weekRev, r.lWeekRev)
+          const mDelta = delta(r.monRev, r.lMonRev)
+          return (
+            <div className="space-y-6">
+
+              {/* Week over Week */}
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+                <h2 className="font-black text-sm uppercase tracking-wider text-zinc-400 mb-4">Week over Week</h2>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-zinc-800 rounded-xl p-4">
+                    <p className="text-xs text-zinc-400 mb-1">This Week</p>
+                    <p className="text-3xl font-black text-[#cee800]">${r.weekRev.toFixed(2)}</p>
+                    <p className="text-zinc-500 text-xs mt-1">{r.weekSessions} sessions</p>
+                  </div>
+                  <div className="bg-zinc-800 rounded-xl p-4">
+                    <p className="text-xs text-zinc-400 mb-1">Last Week</p>
+                    <p className="text-3xl font-black text-white">${r.lWeekRev.toFixed(2)}</p>
+                    <p className="text-zinc-500 text-xs mt-1">{r.lWeekSessions} sessions</p>
+                  </div>
+                </div>
+                <div className={`flex items-center gap-2 text-sm font-black ${wDelta.up ? 'text-[#00e676]' : 'text-red-400'}`}>
+                  <span>{wDelta.up ? '▲' : '▼'}</span>
+                  <span>{wDelta.label} vs last week</span>
+                </div>
+                {/* Profit */}
+                <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-zinc-700">
+                  <div>
+                    <p className="text-xs text-zinc-400 mb-1">Coach Pay This Week</p>
+                    <p className="text-xl font-black text-orange-400">-${r.weekPay.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-zinc-400 mb-1">Net Profit This Week</p>
+                    <p className={`text-xl font-black ${r.weekProfit >= 0 ? 'text-[#00e676]' : 'text-red-400'}`}>${r.weekProfit.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Month over Month */}
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+                <h2 className="font-black text-sm uppercase tracking-wider text-zinc-400 mb-4">Month over Month</h2>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-zinc-800 rounded-xl p-4">
+                    <p className="text-xs text-zinc-400 mb-1">This Month</p>
+                    <p className="text-3xl font-black text-[#cee800]">${r.monRev.toFixed(2)}</p>
+                    <p className="text-zinc-500 text-xs mt-1">{r.monSessions} sessions</p>
+                  </div>
+                  <div className="bg-zinc-800 rounded-xl p-4">
+                    <p className="text-xs text-zinc-400 mb-1">Last Month</p>
+                    <p className="text-3xl font-black text-white">${r.lMonRev.toFixed(2)}</p>
+                    <p className="text-zinc-500 text-xs mt-1">{r.lMonSessions} sessions</p>
+                  </div>
+                </div>
+                <div className={`flex items-center gap-2 text-sm font-black ${mDelta.up ? 'text-[#00e676]' : 'text-red-400'}`}>
+                  <span>{mDelta.up ? '▲' : '▼'}</span>
+                  <span>{mDelta.label} vs last month</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-zinc-700">
+                  <div>
+                    <p className="text-xs text-zinc-400 mb-1">Coach Pay This Month</p>
+                    <p className="text-xl font-black text-orange-400">-${r.monPay.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-zinc-400 mb-1">Net Profit This Month</p>
+                    <p className={`text-xl font-black ${r.monProfit >= 0 ? 'text-[#00e676]' : 'text-red-400'}`}>${r.monProfit.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* By Coach */}
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                <div className="p-5 border-b border-zinc-800">
+                  <h2 className="font-black text-sm uppercase tracking-wider text-zinc-400">Revenue by Coach (All Time)</h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-zinc-800">
+                        <th className="text-left px-5 py-3 text-zinc-400 font-semibold">Coach</th>
+                        <th className="text-right px-5 py-3 text-zinc-400 font-semibold">Sessions</th>
+                        <th className="text-right px-5 py-3 text-zinc-400 font-semibold">Revenue</th>
+                        <th className="text-right px-5 py-3 text-zinc-400 font-semibold">Coach Pay</th>
+                        <th className="text-right px-5 py-3 text-zinc-400 font-semibold">Profit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {r.byCoach.map(([name, d]) => {
+                        const profit = d.revenue - d.coachPay
+                        return (
+                          <tr key={name} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                            <td className="px-5 py-3 font-semibold">{name}</td>
+                            <td className="px-5 py-3 text-right text-zinc-400">{d.sessions}</td>
+                            <td className="px-5 py-3 text-right font-black text-[#cee800]">${d.revenue.toFixed(2)}</td>
+                            <td className="px-5 py-3 text-right text-orange-400">-${d.coachPay.toFixed(2)}</td>
+                            <td className={`px-5 py-3 text-right font-black ${profit >= 0 ? 'text-[#00e676]' : 'text-red-400'}`}>${profit.toFixed(2)}</td>
+                          </tr>
+                        )
+                      })}
+                      {/* Totals row */}
+                      {r.byCoach.length > 0 && (() => {
+                        const totRev = r.byCoach.reduce((s, [, d]) => s + d.revenue, 0)
+                        const totPay = r.byCoach.reduce((s, [, d]) => s + d.coachPay, 0)
+                        const totProfit = totRev - totPay
+                        return (
+                          <tr className="border-t-2 border-zinc-700 bg-zinc-800/40">
+                            <td className="px-5 py-3 font-black text-white">Total</td>
+                            <td className="px-5 py-3 text-right font-black">{r.byCoach.reduce((s, [, d]) => s + d.sessions, 0)}</td>
+                            <td className="px-5 py-3 text-right font-black text-[#cee800]">${totRev.toFixed(2)}</td>
+                            <td className="px-5 py-3 text-right font-black text-orange-400">-${totPay.toFixed(2)}</td>
+                            <td className={`px-5 py-3 text-right font-black ${totProfit >= 0 ? 'text-[#00e676]' : 'text-red-400'}`}>${totProfit.toFixed(2)}</td>
+                          </tr>
+                        )
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )
+        })()}
+
         {/* ── TRANSACTIONS ── */}
         {!loading && tab === 'transactions' && (
           <div className="space-y-4">
@@ -227,6 +472,8 @@ export default function PaymentsPage() {
                 <option value="all">All Statuses</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="confirmed">Confirmed</option>
+                <option value="paid">Paid</option>
+                <option value="completed">Completed</option>
                 <option value="pending_payment">Pending Payment</option>
                 <option value="cancelled">Cancelled</option>
               </select>
@@ -291,9 +538,10 @@ export default function PaymentsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                            PAID_STATUSES.includes(b.status) ? 'bg-[#cee800]/20 text-[#cee800]' :
-                            b.status === 'pending_payment'   ? 'bg-orange-500/20 text-orange-400' :
-                            b.status === 'cancelled'         ? 'bg-red-900/30 text-red-400' :
+                            b.status === 'completed'       ? 'bg-[#00e676]/20 text-[#00e676]' :
+                            BOOKED_STATUSES.includes(b.status) ? 'bg-[#cee800]/20 text-[#cee800]' :
+                            b.status === 'pending_payment' ? 'bg-orange-500/20 text-orange-400' :
+                            b.status === 'cancelled'       ? 'bg-red-900/30 text-red-400' :
                             'bg-zinc-700 text-zinc-400'
                           }`}>{b.status?.replace(/_/g,' ')}</span>
                         </td>
@@ -312,36 +560,149 @@ export default function PaymentsPage() {
         {/* ── COACH EARNINGS ── */}
         {!loading && tab === 'coaches' && (
           <div className="space-y-4">
-            <p className="text-zinc-500 text-sm">Based on coach rates × confirmed sessions. Use this to calculate payouts.</p>
-            {coachEarnings.length === 0 ? (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center text-zinc-500">No sessions recorded yet.</div>
-            ) : coachEarnings.map(([name, data]) => (
-              <div key={name} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-4">
+            <p className="text-zinc-500 text-sm">Set coach pay and director override on each session via the calendar. Mark settled once paid out.</p>
+
+            {/* Director Override block */}
+            {directorEarnings.sessions.length > 0 && (
+              <div className="bg-zinc-900 border border-purple-500/30 rounded-2xl overflow-hidden">
+                <div className="p-5 flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#cee800] flex items-center justify-center text-black font-black text-sm">
-                      {name.split(' ').map((n:string) => n[0]).join('').slice(0,2)}
-                    </div>
+                    <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-black text-sm">D</div>
                     <div>
-                      <p className="font-black">{name}</p>
-                      <p className="text-zinc-400 text-xs">{data.sessions} sessions</p>
+                      <p className="font-black">Director Override <span className="text-purple-400 text-xs font-semibold">(Coach A)</span></p>
+                      <p className="text-zinc-400 text-xs">{directorEarnings.sessions.length} session{directorEarnings.sessions.length !== 1 ? 's' : ''} with override set</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-zinc-500">Estimated Earnings</p>
-                    <p className="text-2xl font-black text-[#cee800]">${data.earned.toFixed(0)}</p>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-xs text-zinc-500">Total</p>
+                      <p className="text-xl font-black text-purple-400">${directorEarnings.earned.toFixed(2)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-zinc-500">Settled</p>
+                      <p className="text-xl font-black text-[#00e676]">${directorEarnings.settled.toFixed(2)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-zinc-500">Pending</p>
+                      <p className={`text-xl font-black ${directorEarnings.earned - directorEarnings.settled > 0 ? 'text-orange-400' : 'text-zinc-400'}`}>
+                        ${(directorEarnings.earned - directorEarnings.settled).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {Object.entries(data.byType).map(([type, count]) => (
-                    <div key={type} className="bg-zinc-800 rounded-xl p-3 text-center">
-                      <p className="text-zinc-500 text-xs capitalize">{type}</p>
-                      <p className="font-black text-lg">{count}</p>
+                <div className="border-t border-zinc-800">
+                  {directorEarnings.sessions.sort((a, b) => b.date.localeCompare(a.date)).map(s => (
+                    <div key={s.id} className={`flex items-center justify-between px-5 py-3 border-b border-zinc-800/50 last:border-0 ${s.director_pay_settled ? 'opacity-50' : ''}`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${s.director_pay_settled ? 'bg-[#00e676]' : 'bg-orange-400'}`} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate">{s.client || s.player_name || 'Session'}</p>
+                          <p className="text-zinc-500 text-xs">{s.date} · {s.coach} · <span className="capitalize">{s.type}</span></p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0 ml-3">
+                        <span className="text-sm font-black text-purple-400">${(s.director_pay ?? 0).toFixed(2)}</span>
+                        <button
+                          onClick={() => markDirectorSettled(s.id, !s.director_pay_settled)}
+                          className={`text-xs font-bold px-3 py-1 rounded-full border transition ${
+                            s.director_pay_settled
+                              ? 'border-zinc-700 text-zinc-500 hover:border-red-500 hover:text-red-400'
+                              : 'border-[#00e676]/40 text-[#00e676] hover:bg-[#00e676]/10'
+                          }`}>
+                          {s.director_pay_settled ? 'Settled' : 'Mark Settled'}
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
+                {directorEarnings.sessions.some(s => !s.director_pay_settled) && (
+                  <div className="px-5 py-3 border-t border-zinc-800 bg-zinc-800/30">
+                    <button onClick={markAllDirectorSettled}
+                      className="text-sm font-black text-[#00e676] hover:underline">
+                      Mark all unsettled as paid →
+                    </button>
+                  </div>
+                )}
               </div>
-            ))}
+            )}
+
+            {coachEarnings.length === 0 ? (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center text-zinc-500">
+                No coach pay set yet. Edit a session in the calendar to assign pay.
+              </div>
+            ) : coachEarnings.map(([name, data]) => {
+              const pending = data.earned - data.settled
+              const unsettledSessions = data.sessions.filter(s => !s.coach_pay_settled)
+              return (
+                <div key={name} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+                  {/* Coach header */}
+                  <div className="p-5 flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#cee800] flex items-center justify-center text-black font-black text-sm">
+                        {name.split(' ').map((n:string) => n[0]).join('').slice(0,2)}
+                      </div>
+                      <div>
+                        <p className="font-black">{name}</p>
+                        <p className="text-zinc-400 text-xs">{data.sessions.length} session{data.sessions.length !== 1 ? 's' : ''} with pay set</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-xs text-zinc-500">Total Earned</p>
+                        <p className="text-xl font-black text-[#cee800]">${data.earned.toFixed(2)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-zinc-500">Settled</p>
+                        <p className="text-xl font-black text-[#00e676]">${data.settled.toFixed(2)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-zinc-500">Pending</p>
+                        <p className={`text-xl font-black ${pending > 0 ? 'text-orange-400' : 'text-zinc-400'}`}>${pending.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sessions list */}
+                  <div className="border-t border-zinc-800">
+                    {data.sessions
+                      .sort((a, b) => b.date.localeCompare(a.date))
+                      .map(s => (
+                        <div key={s.id} className={`flex items-center justify-between px-5 py-3 border-b border-zinc-800/50 last:border-0 ${s.coach_pay_settled ? 'opacity-50' : ''}`}>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${s.coach_pay_settled ? 'bg-[#00e676]' : 'bg-orange-400'}`} />
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold truncate">{s.client || s.player_name || 'Session'}</p>
+                              <p className="text-zinc-500 text-xs">{s.date} · <span className="capitalize">{s.type}</span></p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0 ml-3">
+                            <span className="text-sm font-black">${(s.coach_pay ?? 0).toFixed(2)}</span>
+                            <button
+                              onClick={() => markSettled(s.id, !s.coach_pay_settled)}
+                              className={`text-xs font-bold px-3 py-1 rounded-full border transition ${
+                                s.coach_pay_settled
+                                  ? 'border-zinc-700 text-zinc-500 hover:border-red-500 hover:text-red-400'
+                                  : 'border-[#00e676]/40 text-[#00e676] hover:bg-[#00e676]/10'
+                              }`}>
+                              {s.coach_pay_settled ? 'Settled' : 'Mark Settled'}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Mark all settled */}
+                  {unsettledSessions.length > 0 && (
+                    <div className="px-5 py-3 border-t border-zinc-800 bg-zinc-800/30">
+                      <button onClick={() => markAllSettled(data.sessions)}
+                        className="text-sm font-black text-[#00e676] hover:underline">
+                        Mark all {unsettledSessions.length} unsettled as paid →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
