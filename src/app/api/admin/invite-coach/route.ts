@@ -24,11 +24,11 @@ export async function POST(req: NextRequest) {
   const { email, full_name } = await req.json()
   if (!email || !full_name) return NextResponse.json({ error: 'Email and name required' }, { status: 400 })
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.trainatptg.com'
 
   // Invite via Supabase Auth — sends the email automatically
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${siteUrl}/auth/set-password`,
+    redirectTo: `${siteUrl}/auth/confirm?next=/auth/set-password`,
     data: { full_name, role: 'coach' },
   })
 
