@@ -100,26 +100,42 @@ export default function PaymentsPage() {
     return true
   }), [bookings, statusFilter, typeFilter, coachFilter, dateFrom, dateTo, search])
 
-  // ── Coach earnings ───────────────────────────────────────────
-  const coachEarnings = useMemo(() => {
-    const map: Record<string, { sessions: Booking[]; earned: number; settled: number }> = {}
-    bookings.forEach(b => {
-      if (!b.coach_pay) return
-      const name = b.coach || 'Unknown'
-      if (!map[name]) map[name] = { sessions: [], earned: 0, settled: 0 }
-      map[name].sessions.push(b)
-      map[name].earned += b.coach_pay
-      if (b.coach_pay_settled) map[name].settled += b.coach_pay
-    })
-    return Object.entries(map).sort((a,b) => b[1].earned - a[1].earned)
-  }, [bookings])
+  // Director override always rolls into this coach's pay
+  const DIRECTOR_COACH = 'Coach A'
 
-  // Director override earnings (all sessions with director_pay set)
-  const directorEarnings = useMemo(() => {
-    const sessions = bookings.filter(b => b.director_pay)
-    const earned   = sessions.reduce((s, b) => s + (b.director_pay ?? 0), 0)
-    const settled  = sessions.filter(b => b.director_pay_settled).reduce((s, b) => s + (b.director_pay ?? 0), 0)
-    return { sessions, earned, settled }
+  // ── Coach earnings ───────────────────────────────────────────
+  // Each entry tracks regular coaching pay + (for Coach A) director override pay
+  const coachEarnings = useMemo(() => {
+    type CoachData = {
+      coachSessions:    Booking[]
+      directorSessions: Booking[]
+      coachEarned:      number
+      coachSettled:     number
+      directorEarned:   number
+      directorSettled:  number
+    }
+    const map: Record<string, CoachData> = {}
+    const ensure = (name: string) => {
+      if (!map[name]) map[name] = { coachSessions: [], directorSessions: [], coachEarned: 0, coachSettled: 0, directorEarned: 0, directorSettled: 0 }
+    }
+    bookings.forEach(b => {
+      if (b.coach_pay) {
+        const name = b.coach || 'Unknown'
+        ensure(name)
+        map[name].coachSessions.push(b)
+        map[name].coachEarned += b.coach_pay
+        if (b.coach_pay_settled) map[name].coachSettled += b.coach_pay
+      }
+      if (b.director_pay) {
+        ensure(DIRECTOR_COACH)
+        map[DIRECTOR_COACH].directorSessions.push(b)
+        map[DIRECTOR_COACH].directorEarned += b.director_pay
+        if (b.director_pay_settled) map[DIRECTOR_COACH].directorSettled += b.director_pay
+      }
+    })
+    return Object.entries(map)
+      .map(([name, d]) => ({ name, ...d, totalEarned: d.coachEarned + d.directorEarned, totalSettled: d.coachSettled + d.directorSettled }))
+      .sort((a, b) => b.totalEarned - a.totalEarned)
   }, [bookings])
 
   async function markSettled(bookingId: string, settled: boolean) {
@@ -204,11 +220,6 @@ export default function PaymentsPage() {
       body: JSON.stringify({ director_pay_settled: settled }),
     })
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, director_pay_settled: settled } : b))
-  }
-
-  async function markAllDirectorSettled() {
-    const unsettled = directorEarnings.sessions.filter(s => !s.director_pay_settled)
-    await Promise.all(unsettled.map(s => markDirectorSettled(s.id, true)))
   }
 
   // ── Revenue by type ──────────────────────────────────────────
@@ -562,143 +573,123 @@ export default function PaymentsPage() {
           <div className="space-y-4">
             <p className="text-zinc-500 text-sm">Set coach pay and director override on each session via the calendar. Mark settled once paid out.</p>
 
-            {/* Director Override block */}
-            {directorEarnings.sessions.length > 0 && (
-              <div className="bg-zinc-900 border border-purple-500/30 rounded-2xl overflow-hidden">
-                <div className="p-5 flex items-center justify-between flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-black text-sm">D</div>
-                    <div>
-                      <p className="font-black">Director Override <span className="text-purple-400 text-xs font-semibold">(Coach A)</span></p>
-                      <p className="text-zinc-400 text-xs">{directorEarnings.sessions.length} session{directorEarnings.sessions.length !== 1 ? 's' : ''} with override set</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="text-xs text-zinc-500">Total</p>
-                      <p className="text-xl font-black text-purple-400">${directorEarnings.earned.toFixed(2)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-zinc-500">Settled</p>
-                      <p className="text-xl font-black text-[#00e676]">${directorEarnings.settled.toFixed(2)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-zinc-500">Pending</p>
-                      <p className={`text-xl font-black ${directorEarnings.earned - directorEarnings.settled > 0 ? 'text-orange-400' : 'text-zinc-400'}`}>
-                        ${(directorEarnings.earned - directorEarnings.settled).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t border-zinc-800">
-                  {directorEarnings.sessions.sort((a, b) => b.date.localeCompare(a.date)).map(s => (
-                    <div key={s.id} className={`flex items-center justify-between px-5 py-3 border-b border-zinc-800/50 last:border-0 ${s.director_pay_settled ? 'opacity-50' : ''}`}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${s.director_pay_settled ? 'bg-[#00e676]' : 'bg-orange-400'}`} />
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold truncate">{s.client || s.player_name || 'Session'}</p>
-                          <p className="text-zinc-500 text-xs">{s.date} · {s.coach} · <span className="capitalize">{s.type}</span></p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0 ml-3">
-                        <span className="text-sm font-black text-purple-400">${(s.director_pay ?? 0).toFixed(2)}</span>
-                        <button
-                          onClick={() => markDirectorSettled(s.id, !s.director_pay_settled)}
-                          className={`text-xs font-bold px-3 py-1 rounded-full border transition ${
-                            s.director_pay_settled
-                              ? 'border-zinc-700 text-zinc-500 hover:border-red-500 hover:text-red-400'
-                              : 'border-[#00e676]/40 text-[#00e676] hover:bg-[#00e676]/10'
-                          }`}>
-                          {s.director_pay_settled ? 'Settled' : 'Mark Settled'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {directorEarnings.sessions.some(s => !s.director_pay_settled) && (
-                  <div className="px-5 py-3 border-t border-zinc-800 bg-zinc-800/30">
-                    <button onClick={markAllDirectorSettled}
-                      className="text-sm font-black text-[#00e676] hover:underline">
-                      Mark all unsettled as paid →
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
             {coachEarnings.length === 0 ? (
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center text-zinc-500">
                 No coach pay set yet. Edit a session in the calendar to assign pay.
               </div>
-            ) : coachEarnings.map(([name, data]) => {
-              const pending = data.earned - data.settled
-              const unsettledSessions = data.sessions.filter(s => !s.coach_pay_settled)
+            ) : coachEarnings.map(({ name, coachSessions, directorSessions, coachEarned, coachSettled, directorEarned, directorSettled, totalEarned, totalSettled }) => {
+              const totalPending = totalEarned - totalSettled
+              const unsettledCoach    = coachSessions.filter(s => !s.coach_pay_settled)
+              const unsettledDirector = directorSessions.filter(s => !s.director_pay_settled)
+              const isDirector = name === DIRECTOR_COACH
+
               return (
                 <div key={name} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-                  {/* Coach header */}
+                  {/* Header */}
                   <div className="p-5 flex items-center justify-between flex-wrap gap-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-[#cee800] flex items-center justify-center text-black font-black text-sm">
-                        {name.split(' ').map((n:string) => n[0]).join('').slice(0,2)}
+                        {name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                       </div>
                       <div>
                         <p className="font-black">{name}</p>
-                        <p className="text-zinc-400 text-xs">{data.sessions.length} session{data.sessions.length !== 1 ? 's' : ''} with pay set</p>
+                        <p className="text-zinc-400 text-xs">
+                          {coachSessions.length > 0 && `${coachSessions.length} coaching session${coachSessions.length !== 1 ? 's' : ''}`}
+                          {coachSessions.length > 0 && directorSessions.length > 0 && ' · '}
+                          {directorSessions.length > 0 && `${directorSessions.length} director override${directorSessions.length !== 1 ? 's' : ''}`}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <p className="text-xs text-zinc-500">Total Earned</p>
-                        <p className="text-xl font-black text-[#cee800]">${data.earned.toFixed(2)}</p>
+                        <p className="text-xs text-zinc-500">Total Owed</p>
+                        <p className="text-xl font-black text-[#cee800]">${totalEarned.toFixed(2)}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-zinc-500">Settled</p>
-                        <p className="text-xl font-black text-[#00e676]">${data.settled.toFixed(2)}</p>
+                        <p className="text-xl font-black text-[#00e676]">${totalSettled.toFixed(2)}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-zinc-500">Pending</p>
-                        <p className={`text-xl font-black ${pending > 0 ? 'text-orange-400' : 'text-zinc-400'}`}>${pending.toFixed(2)}</p>
+                        <p className={`text-xl font-black ${totalPending > 0 ? 'text-orange-400' : 'text-zinc-400'}`}>${totalPending.toFixed(2)}</p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Sessions list */}
-                  <div className="border-t border-zinc-800">
-                    {data.sessions
-                      .sort((a, b) => b.date.localeCompare(a.date))
-                      .map(s => (
-                        <div key={s.id} className={`flex items-center justify-between px-5 py-3 border-b border-zinc-800/50 last:border-0 ${s.coach_pay_settled ? 'opacity-50' : ''}`}>
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${s.coach_pay_settled ? 'bg-[#00e676]' : 'bg-orange-400'}`} />
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold truncate">{s.client || s.player_name || 'Session'}</p>
-                              <p className="text-zinc-500 text-xs">{s.date} · <span className="capitalize">{s.type}</span></p>
+                  {/* Coaching sessions */}
+                  {coachSessions.length > 0 && (
+                    <>
+                      {isDirector && (
+                        <div className="px-5 py-2 border-t border-zinc-800 bg-zinc-800/40">
+                          <p className="text-xs font-black uppercase tracking-wider text-zinc-400">Coaching Pay <span className="text-[#cee800]">${coachEarned.toFixed(2)}</span></p>
+                        </div>
+                      )}
+                      <div className={isDirector ? '' : 'border-t border-zinc-800'}>
+                        {coachSessions.sort((a, b) => b.date.localeCompare(a.date)).map(s => (
+                          <div key={s.id} className={`flex items-center justify-between px-5 py-3 border-b border-zinc-800/50 last:border-0 ${s.coach_pay_settled ? 'opacity-50' : ''}`}>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${s.coach_pay_settled ? 'bg-[#00e676]' : 'bg-orange-400'}`} />
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold truncate">{s.client || s.player_name || 'Session'}</p>
+                                <p className="text-zinc-500 text-xs">{s.date} · <span className="capitalize">{s.type}</span></p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0 ml-3">
+                              <span className="text-sm font-black">${(s.coach_pay ?? 0).toFixed(2)}</span>
+                              <button onClick={() => markSettled(s.id, !s.coach_pay_settled)}
+                                className={`text-xs font-bold px-3 py-1 rounded-full border transition ${s.coach_pay_settled ? 'border-zinc-700 text-zinc-500 hover:border-red-500 hover:text-red-400' : 'border-[#00e676]/40 text-[#00e676] hover:bg-[#00e676]/10'}`}>
+                                {s.coach_pay_settled ? 'Settled' : 'Mark Settled'}
+                              </button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 shrink-0 ml-3">
-                            <span className="text-sm font-black">${(s.coach_pay ?? 0).toFixed(2)}</span>
-                            <button
-                              onClick={() => markSettled(s.id, !s.coach_pay_settled)}
-                              className={`text-xs font-bold px-3 py-1 rounded-full border transition ${
-                                s.coach_pay_settled
-                                  ? 'border-zinc-700 text-zinc-500 hover:border-red-500 hover:text-red-400'
-                                  : 'border-[#00e676]/40 text-[#00e676] hover:bg-[#00e676]/10'
-                              }`}>
-                              {s.coach_pay_settled ? 'Settled' : 'Mark Settled'}
-                            </button>
-                          </div>
+                        ))}
+                      </div>
+                      {unsettledCoach.length > 0 && (
+                        <div className="px-5 py-3 border-t border-zinc-800 bg-zinc-800/30">
+                          <button onClick={() => markAllSettled(coachSessions)}
+                            className="text-sm font-black text-[#00e676] hover:underline">
+                            Mark all {unsettledCoach.length} coaching sessions as paid →
+                          </button>
                         </div>
-                      ))}
-                  </div>
+                      )}
+                    </>
+                  )}
 
-                  {/* Mark all settled */}
-                  {unsettledSessions.length > 0 && (
-                    <div className="px-5 py-3 border-t border-zinc-800 bg-zinc-800/30">
-                      <button onClick={() => markAllSettled(data.sessions)}
-                        className="text-sm font-black text-[#00e676] hover:underline">
-                        Mark all {unsettledSessions.length} unsettled as paid →
-                      </button>
-                    </div>
+                  {/* Director override sessions (Coach A only) */}
+                  {isDirector && directorSessions.length > 0 && (
+                    <>
+                      <div className="px-5 py-2 border-t border-zinc-800 bg-zinc-800/40">
+                        <p className="text-xs font-black uppercase tracking-wider text-zinc-400">Director Override <span className="text-purple-400">${directorEarned.toFixed(2)}</span></p>
+                      </div>
+                      <div>
+                        {directorSessions.sort((a, b) => b.date.localeCompare(a.date)).map(s => (
+                          <div key={`dir-${s.id}`} className={`flex items-center justify-between px-5 py-3 border-b border-zinc-800/50 last:border-0 ${s.director_pay_settled ? 'opacity-50' : ''}`}>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${s.director_pay_settled ? 'bg-[#00e676]' : 'bg-purple-400'}`} />
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold truncate">{s.client || s.player_name || 'Session'}</p>
+                                <p className="text-zinc-500 text-xs">{s.date} · {s.coach} · <span className="capitalize">{s.type}</span></p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0 ml-3">
+                              <span className="text-sm font-black text-purple-400">${(s.director_pay ?? 0).toFixed(2)}</span>
+                              <button onClick={() => markDirectorSettled(s.id, !s.director_pay_settled)}
+                                className={`text-xs font-bold px-3 py-1 rounded-full border transition ${s.director_pay_settled ? 'border-zinc-700 text-zinc-500 hover:border-red-500 hover:text-red-400' : 'border-purple-500/40 text-purple-400 hover:bg-purple-500/10'}`}>
+                                {s.director_pay_settled ? 'Settled' : 'Mark Settled'}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {unsettledDirector.length > 0 && (
+                        <div className="px-5 py-3 border-t border-zinc-800 bg-zinc-800/30">
+                          <button onClick={() => Promise.all(unsettledDirector.map(s => markDirectorSettled(s.id, true)))}
+                            className="text-sm font-black text-purple-400 hover:underline">
+                            Mark all {unsettledDirector.length} overrides as paid →
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )
