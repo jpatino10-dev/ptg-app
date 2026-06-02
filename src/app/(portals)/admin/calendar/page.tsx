@@ -41,6 +41,7 @@ type Booking = {
   status: string; price: string | null; is_group_slot: boolean
   group_slot_id: string | null; capacity: number | null
   duration_minutes: number | null; notes: string | null; location: string | null
+  coach_pay: number | null; director_pay: number | null
 }
 
 function fmt(d: Date) {
@@ -395,6 +396,11 @@ export default function CalendarPage() {
   const [draggedBooking, setDraggedBooking]  = useState<Booking | null>(null)
   const [pendingReschedule, setPendingReschedule] = useState<{ booking: Booking; date: string } | null>(null)
   const [seeding, setSeeding] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/me').then(r => r.json()).then(d => setIsAdmin(d.role === 'admin'))
+  }, [])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
   const todayStr = fmt(new Date())
@@ -470,9 +476,7 @@ export default function CalendarPage() {
     const data = await res.json()
     setSeeding(false)
     if (data.error) { alert(data.error); return }
-    // Jump to June 2026 and reload
-    setView('month')
-    setAnchor(new Date(2026, 5, 1))
+    loadBookings()
   }
 
   async function deleteSession(id: string) {
@@ -504,7 +508,7 @@ export default function CalendarPage() {
           <div className="flex items-center gap-2 ml-auto">
             <button onClick={seedJuneGroups} disabled={seeding}
               className="px-4 py-1.5 bg-zinc-800 border border-zinc-700 text-white font-semibold text-sm rounded-lg hover:border-[#00e676] hover:text-[#00e676] transition disabled:opacity-50">
-              {seeding ? 'Adding...' : '+ June Groups'}
+              {seeding ? 'Adding...' : '+ Seed Groups'}
             </button>
             <button onClick={() => openNewSession()}
               className="px-4 py-1.5 bg-[#cee800] text-black font-black text-sm rounded-lg hover:bg-[#d4f030] transition">
@@ -568,6 +572,7 @@ export default function CalendarPage() {
       {editing && (
         <EditSessionModal
           booking={editing}
+          isAdmin={isAdmin}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); loadBookings() }}
         />
@@ -586,6 +591,7 @@ export default function CalendarPage() {
         <NewSessionModal
           defaultDate={newSessionDate}
           defaultHour={newSessionHour}
+          isAdmin={isAdmin}
           onClose={() => setShowNewSession(false)}
           onCreated={() => { setShowNewSession(false); loadBookings() }}
         />

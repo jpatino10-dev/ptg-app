@@ -1,21 +1,33 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-const COACHES = ['Coach Aidan', 'Coach A', 'Coach Josh']
 const TYPES = [
   { id: 'individual', label: 'Individual' },
   { id: 'semi',       label: 'Semi-Individual' },
   { id: 'group',      label: 'Group Training' },
   { id: 'camp',       label: 'Camp / Clinic' },
 ]
-const HOURS = [
-  '6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM',
-  '9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM',
-  '12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM',
-  '3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM',
-  '6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM',
-]
+
+function toTimeInput(display: string): string {
+  const m = display.match(/^(\d+):(\d+)\s*(AM|PM)$/i)
+  if (!m) return '16:00'
+  let h = parseInt(m[1])
+  const min = m[2]
+  const ampm = m[3].toUpperCase()
+  if (ampm === 'PM' && h !== 12) h += 12
+  if (ampm === 'AM' && h === 12) h = 0
+  return `${String(h).padStart(2, '0')}:${min}`
+}
+
+function fromTimeInput(val: string): string {
+  const [hStr, min] = val.split(':')
+  let h = parseInt(hStr)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  if (h > 12) h -= 12
+  if (h === 0) h = 12
+  return `${h}:${min} ${ampm}`
+}
 const DURATIONS = [
   { label: '30 min', value: 30 },
   { label: '1 hr',   value: 60 },
@@ -29,18 +41,21 @@ type Booking = {
   id: string; date: string; hour: string; coach: string; type: string
   player_name: string | null; client: string; status: string
   notes?: string | null; duration_minutes: number | null; location?: string | null
+  coach_pay?: number | null; director_pay?: number | null; price?: string | null
 }
 
 type Props = {
   booking: Booking
+  isAdmin?: boolean
   onClose: () => void
   onSaved: () => void
 }
 
-export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
+export default function EditSessionModal({ booking, isAdmin = false, onClose, onSaved }: Props) {
   const isMultiCoach = booking.type === 'camp'
   const initialCoaches = booking.coach?.split(', ').map(s => s.trim()).filter(Boolean) || []
 
+  const [coaches, setCoaches] = useState<string[]>([])
   const [title, setTitle]     = useState(booking.player_name || booking.client || '')
   const [type, setType]       = useState(booking.type || 'individual')
   const [date, setDate]       = useState(booking.date)
@@ -49,16 +64,29 @@ export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
   const [notes, setNotes]     = useState(booking.notes || '')
   const [status, setStatus]   = useState(booking.status || 'confirmed')
 
-  // Single coach
+  // Single coach — use existing value from booking if present
   const [coach, setCoach]     = useState(
-    !isMultiCoach && initialCoaches.length === 1 ? initialCoaches[0] : COACHES[0]
+    !isMultiCoach && initialCoaches.length === 1 ? initialCoaches[0] : ''
   )
   // Multi coach (camp)
   const [selectedCoaches, setSelectedCoaches] = useState<string[]>(
     isMultiCoach ? initialCoaches : []
   )
 
-  const [location, setLocation] = useState(booking.location || '')
+  useEffect(() => {
+    fetch('/api/coaches').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) {
+        setCoaches(data)
+        // If coach not yet set (no existing booking coach), default to first
+        setCoach(prev => prev || data[0] || '')
+      }
+    })
+  }, [])
+
+  const [location, setLocation]     = useState(booking.location || '')
+  const [price, setPrice]           = useState(booking.price != null ? String(parseFloat(booking.price)) : '')
+  const [coachPay, setCoachPay]     = useState(booking.coach_pay != null ? String(booking.coach_pay) : '')
+  const [directorPay, setDirectorPay] = useState(booking.director_pay != null ? String(booking.director_pay) : '')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
   const [applyToAll, setApplyToAll] = useState(false)
@@ -85,6 +113,9 @@ export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
           notes,
           location,
           status,
+          price:            price !== '' ? parseFloat(price).toFixed(2) : null,
+          coach_pay:        coachPay !== '' ? parseFloat(coachPay) : null,
+          director_pay:     directorPay !== '' ? parseFloat(directorPay) : null,
           applyToAll,
           applyToClient:    applyToAll ? (booking.client || booking.player_name) : undefined,
         }),
@@ -139,7 +170,7 @@ export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
             </label>
             {isCamp ? (
               <div className="mt-1 space-y-2">
-                {COACHES.map(c => {
+                {coaches.map(c => {
                   const checked = selectedCoaches.includes(c)
                   return (
                     <button key={c} type="button"
@@ -158,7 +189,7 @@ export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
             ) : (
               <select value={coach} onChange={e => setCoach(e.target.value)}
                 className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#cee800]">
-                {COACHES.map(c => <option key={c}>{c}</option>)}
+                {coaches.map(c => <option key={c}>{c}</option>)}
               </select>
             )}
           </div>
@@ -172,10 +203,9 @@ export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
             </div>
             <div>
               <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Time</label>
-              <select value={hour} onChange={e => setHour(e.target.value)}
-                className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#cee800]">
-                {HOURS.map(h => <option key={h}>{h}</option>)}
-              </select>
+              <input type="time" step="900" value={toTimeInput(hour)}
+                onChange={e => e.target.value && setHour(fromTimeInput(e.target.value))}
+                className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#cee800]" />
             </div>
           </div>
 
@@ -204,6 +234,46 @@ export default function EditSessionModal({ booking, onClose, onSaved }: Props) {
               ))}
             </select>
           </div>
+
+          {isAdmin && (
+            <>
+              {/* Price */}
+              <div>
+                <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Session Price</label>
+                <div className="mt-1 relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                  <input type="number" min="0" step="0.01" value={price} onChange={e => setPrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-7 pr-3 py-2.5 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-[#cee800]" />
+                </div>
+                <p className="text-zinc-600 text-xs mt-1">Amount collected from the client</p>
+              </div>
+
+              {/* Coach Pay */}
+              <div>
+                <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Coach Pay</label>
+                <div className="mt-1 relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                  <input type="number" min="0" step="0.01" value={coachPay} onChange={e => setCoachPay(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-7 pr-3 py-2.5 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-[#cee800]" />
+                </div>
+                <p className="text-zinc-600 text-xs mt-1">Amount owed to the assigned coach</p>
+              </div>
+
+              {/* Director Override */}
+              <div>
+                <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Director Override</label>
+                <div className="mt-1 relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                  <input type="number" min="0" step="0.01" value={directorPay} onChange={e => setDirectorPay(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-7 pr-3 py-2.5 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-[#cee800]" />
+                </div>
+                <p className="text-zinc-600 text-xs mt-1">Amount owed to the Director (Coach A)</p>
+              </div>
+            </>
+          )}
 
           {/* Location */}
           <div>

@@ -1,21 +1,35 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-const COACHES = ['Coach Aidan', 'Coach A', 'Coach Josh']
 const TYPES = [
   { id: 'individual', label: 'Individual' },
   { id: 'semi',       label: 'Semi-Individual' },
   { id: 'group',      label: 'Group Training' },
   { id: 'camp',       label: 'Camp / Clinic' },
 ]
-const HOURS = [
-  '6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM',
-  '9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM',
-  '12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM',
-  '3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM',
-  '6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM',
-]
+
+// Convert "4:00 PM" → "16:00" for <input type="time">
+function toTimeInput(display: string): string {
+  const m = display.match(/^(\d+):(\d+)\s*(AM|PM)$/i)
+  if (!m) return '16:00'
+  let h = parseInt(m[1])
+  const min = m[2]
+  const ampm = m[3].toUpperCase()
+  if (ampm === 'PM' && h !== 12) h += 12
+  if (ampm === 'AM' && h === 12) h = 0
+  return `${String(h).padStart(2, '0')}:${min}`
+}
+
+// Convert "16:00" → "4:00 PM" for storage
+function fromTimeInput(val: string): string {
+  const [hStr, min] = val.split(':')
+  let h = parseInt(hStr)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  if (h > 12) h -= 12
+  if (h === 0) h = 12
+  return `${h}:${min} ${ampm}`
+}
 const DURATIONS = [
   { label: '30 min',  value: 30  },
   { label: '1 hr',    value: 60  },
@@ -30,20 +44,35 @@ type RecurType = 'none' | 'weekly' | 'daily'
 type Props = {
   defaultDate?: string
   defaultHour?: string
+  isAdmin?: boolean
   onClose: () => void
   onCreated: () => void
 }
 
-export default function NewSessionModal({ defaultDate, defaultHour, onClose, onCreated }: Props) {
+export default function NewSessionModal({ defaultDate, defaultHour, isAdmin = false, onClose, onCreated }: Props) {
+  const [coaches, setCoaches]       = useState<string[]>([])
   const [title, setTitle]           = useState('')
-  const [coach, setCoach]           = useState(COACHES[0])
-  const [selectedCoaches, setSelectedCoaches] = useState<string[]>([COACHES[0]])
+  const [coach, setCoach]           = useState('')
+  const [selectedCoaches, setSelectedCoaches] = useState<string[]>([])
+
+  useEffect(() => {
+    fetch('/api/coaches').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) {
+        setCoaches(data)
+        setCoach(data[0] || '')
+        setSelectedCoaches(data[0] ? [data[0]] : [])
+      }
+    })
+  }, [])
   const [type, setType]             = useState('individual')
   const [date, setDate]             = useState(defaultDate || new Date().toISOString().split('T')[0])
   const [hour, setHour]             = useState(defaultHour || '4:00 PM')
   const [duration, setDuration]     = useState(60)
   const [notes, setNotes]           = useState('')
   const [location, setLocation]     = useState('')
+  const [price, setPrice]           = useState('')
+  const [coachPay, setCoachPay]     = useState('')
+  const [directorPay, setDirectorPay] = useState('')
   const [recurType, setRecurType]   = useState<RecurType>('none')
   const [occurrences, setOccurrences] = useState('8')
   const [loading, setLoading]       = useState(false)
@@ -67,6 +96,9 @@ export default function NewSessionModal({ defaultDate, defaultHour, onClose, onC
         body: JSON.stringify({
           title, coach: coachValue, type, date, hour, duration,
           notes, location, recurType, occurrences: totalSessions,
+          price:       price !== '' ? parseFloat(price).toFixed(2) : null,
+          coach_pay:   coachPay !== '' ? parseFloat(coachPay) : null,
+          director_pay: directorPay !== '' ? parseFloat(directorPay) : null,
         }),
       })
       const data = await res.json()
@@ -113,7 +145,7 @@ export default function NewSessionModal({ defaultDate, defaultHour, onClose, onC
             </label>
             {type === 'camp' ? (
               <div className="mt-1 space-y-2">
-                {COACHES.map(c => {
+                {coaches.map(c => {
                   const checked = selectedCoaches.includes(c)
                   return (
                     <button
@@ -139,7 +171,7 @@ export default function NewSessionModal({ defaultDate, defaultHour, onClose, onC
             ) : (
               <select value={coach} onChange={e => setCoach(e.target.value)}
                 className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#cee800]">
-                {COACHES.map(c => <option key={c}>{c}</option>)}
+                {coaches.map(c => <option key={c}>{c}</option>)}
               </select>
             )}
           </div>
@@ -168,10 +200,9 @@ export default function NewSessionModal({ defaultDate, defaultHour, onClose, onC
             </div>
             <div>
               <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Time</label>
-              <select value={hour} onChange={e => setHour(e.target.value)}
-                className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#cee800]">
-                {HOURS.map(h => <option key={h}>{h}</option>)}
-              </select>
+              <input type="time" step="900" value={toTimeInput(hour)}
+                onChange={e => e.target.value && setHour(fromTimeInput(e.target.value))}
+                className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#cee800]" />
             </div>
           </div>
 
@@ -189,6 +220,42 @@ export default function NewSessionModal({ defaultDate, defaultHour, onClose, onC
               ))}
             </div>
           </div>
+
+          {/* Admin-only financial fields */}
+          {isAdmin && (
+            <>
+              <div>
+                <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Session Price</label>
+                <div className="mt-1 relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                  <input type="number" min="0" step="0.01" value={price} onChange={e => setPrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-7 pr-3 py-2.5 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-[#cee800]" />
+                </div>
+                <p className="text-zinc-600 text-xs mt-1">Amount collected from the client</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Coach Pay</label>
+                <div className="mt-1 relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                  <input type="number" min="0" step="0.01" value={coachPay} onChange={e => setCoachPay(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-7 pr-3 py-2.5 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-[#cee800]" />
+                </div>
+                <p className="text-zinc-600 text-xs mt-1">Amount owed to the assigned coach</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Director Override</label>
+                <div className="mt-1 relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                  <input type="number" min="0" step="0.01" value={directorPay} onChange={e => setDirectorPay(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-7 pr-3 py-2.5 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-[#cee800]" />
+                </div>
+                <p className="text-zinc-600 text-xs mt-1">Amount owed to the Director (Coach A)</p>
+              </div>
+            </>
+          )}
 
           {/* Location */}
           <div>
