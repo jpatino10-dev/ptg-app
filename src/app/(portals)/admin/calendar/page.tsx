@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import NewSessionModal from '@/components/NewSessionModal'
 import EditSessionModal from '@/components/EditSessionModal'
+import NewGroupSessionModal from '@/components/NewGroupSessionModal'
 import {
   DndContext, DragOverlay, PointerSensor,
   useSensor, useSensors, useDroppable, useDraggable,
@@ -395,7 +396,7 @@ export default function CalendarPage() {
   const [newSessionHour, setNewSessionHour]  = useState<string | undefined>()
   const [draggedBooking, setDraggedBooking]  = useState<Booking | null>(null)
   const [pendingReschedule, setPendingReschedule] = useState<{ booking: Booking; date: string } | null>(null)
-  const [seeding, setSeeding] = useState(false)
+  const [showGroupModal, setShowGroupModal] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
@@ -470,14 +471,6 @@ export default function CalendarPage() {
     loadBookings()
   }
 
-  async function seedJuneGroups() {
-    setSeeding(true)
-    const res = await fetch('/api/admin/seed-group-sessions', { method: 'POST' })
-    const data = await res.json()
-    setSeeding(false)
-    if (data.error) { alert(data.error); return }
-    loadBookings()
-  }
 
   async function deleteSession(id: string) {
     await fetch(`/api/sessions/${id}`, { method: 'DELETE' })
@@ -506,9 +499,9 @@ export default function CalendarPage() {
             ))}
           </div>
           <div className="flex items-center gap-2 ml-auto">
-            <button onClick={seedJuneGroups} disabled={seeding}
-              className="px-4 py-1.5 bg-zinc-800 border border-zinc-700 text-white font-semibold text-sm rounded-lg hover:border-[#00e676] hover:text-[#00e676] transition disabled:opacity-50">
-              {seeding ? 'Adding...' : '+ Seed Groups'}
+            <button onClick={() => setShowGroupModal(true)}
+              className="px-4 py-1.5 bg-zinc-800 border border-zinc-700 text-white font-semibold text-sm rounded-lg hover:border-[#00e676] hover:text-[#00e676] transition">
+              + Group Sessions
             </button>
             <button onClick={() => openNewSession()}
               className="px-4 py-1.5 bg-[#cee800] text-black font-black text-sm rounded-lg hover:bg-[#d4f030] transition">
@@ -594,6 +587,13 @@ export default function CalendarPage() {
           isAdmin={isAdmin}
           onClose={() => setShowNewSession(false)}
           onCreated={() => { setShowNewSession(false); loadBookings() }}
+        />
+      )}
+
+      {showGroupModal && (
+        <NewGroupSessionModal
+          onClose={() => setShowGroupModal(false)}
+          onCreated={() => { setShowGroupModal(false); loadBookings() }}
         />
       )}
     </div>

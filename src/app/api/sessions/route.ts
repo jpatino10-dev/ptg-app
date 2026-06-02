@@ -42,35 +42,42 @@ export async function POST(req: NextRequest) {
   const admin = await verifyAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { title, coach, type, date, hour, duration, notes, location, recurType, occurrences: occ, price, coach_pay, director_pay } = await req.json()
+  const { title, coach, type, date, hour, duration, notes, location, recurType, occurrences: occ, price, coach_pay, director_pay, extraDates, capacity, isGroup } = await req.json()
+
+  const makeRow = (d: string, h: string) => ({
+    id:               crypto.randomUUID(),
+    date:             d,
+    hour:             h,
+    coach,
+    type,
+    client:           title || 'Admin Booking',
+    player_name:      title || null,
+    status:           'confirmed',
+    source:           'admin',
+    notes:            notes || null,
+    location:         location || null,
+    price:            price || null,
+    coach_pay:        coach_pay || null,
+    director_pay:     director_pay || null,
+    is_group_slot:    isGroup || type === 'group',
+    capacity:         isGroup || type === 'group' ? (capacity || 12) : null,
+    duration_minutes: duration || 60,
+  })
 
   const rows = []
-  const base = new Date(date + 'T00:00:00')
-  const count = recurType !== 'none' ? Math.min(parseInt(occ) || 1, 52) : 1
-  const stepDays = recurType === 'daily' ? 1 : 7
-
-  for (let i = 0; i < count; i++) {
-    const d = new Date(base)
-    d.setDate(d.getDate() + i * (recurType !== 'none' ? stepDays : 0))
-    rows.push({
-      id:               crypto.randomUUID(),
-      date:             d.toISOString().split('T')[0],
-      hour,
-      coach,
-      type,
-      client:           title || 'Admin Booking',
-      player_name:      title || null,
-      status:           'confirmed',
-      source:           'admin',
-      notes:            notes || null,
-      location:         location || null,
-      price:            price || null,
-      coach_pay:        coach_pay || null,
-      director_pay:     director_pay || null,
-      is_group_slot:    type === 'group',
-      capacity:         type === 'group' ? 10 : null,
-      duration_minutes: duration || 60,
-    })
+  if (Array.isArray(extraDates) && extraDates.length > 0) {
+    // Group session modal: explicit list of date/hour pairs
+    rows.push(makeRow(date, hour))
+    for (const extra of extraDates) rows.push(makeRow(extra.date, extra.hour))
+  } else {
+    const base = new Date(date + 'T00:00:00')
+    const count = recurType !== 'none' ? Math.min(parseInt(occ) || 1, 52) : 1
+    const stepDays = recurType === 'daily' ? 1 : 7
+    for (let i = 0; i < count; i++) {
+      const d = new Date(base)
+      d.setDate(d.getDate() + i * (recurType !== 'none' ? stepDays : 0))
+      rows.push(makeRow(d.toISOString().split('T')[0], hour))
+    }
   }
 
   const { error } = await admin.from('bookings').insert(rows)
