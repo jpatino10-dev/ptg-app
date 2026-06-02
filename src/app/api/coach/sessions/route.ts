@@ -27,14 +27,16 @@ async function verifyCoach() {
 
 const SELECT = 'id,date,hour,coach,type,status,price,player_name,parent_name,notes,duration_minutes,client'
 
-export async function GET() {
+export async function GET(req: Request) {
+  const debug = new URL(req.url).searchParams.has('debug')
+
   const ctx = await verifyCoach()
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const isAdminOrDirector = ctx.role === 'admin' || ctx.role === 'director'
 
   // Personal sessions — matched by coach name
-  const { data: personal } = await ctx.service
+  const { data: personal, error: e1 } = await ctx.service
     .from('bookings')
     .select(SELECT)
     .ilike('coach', `%${ctx.fullName}%`)
@@ -42,13 +44,23 @@ export async function GET() {
 
   // Admins and directors also see all group slots regardless of coach name
   let groups: typeof personal = []
+  let e2 = null
   if (isAdminOrDirector) {
-    const { data } = await ctx.service
+    const { data, error } = await ctx.service
       .from('bookings')
       .select(SELECT)
       .eq('type', 'group')
       .order('date', { ascending: false })
     groups = data || []
+    e2 = error
+  }
+
+  if (debug) {
+    return NextResponse.json({
+      role: ctx.role, fullName: ctx.fullName,
+      personalCount: personal?.length ?? 0, personalError: e1,
+      groupCount: groups.length, groupError: e2,
+    })
   }
 
   // Merge and deduplicate by id
