@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
@@ -9,9 +9,22 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
   const [email, setEmail] = useState('')
+
+  // If Supabase lands an invite link here, forward to set-password
+  useEffect(() => {
+    const hash = window.location.hash
+    if (hash.includes('type=invite') || hash.includes('access_token')) {
+      router.replace('/auth/set-password' + hash)
+    }
+  }, [router])
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+  const urlError = params?.get('error_code') === 'otp_expired'
+    ? 'That login link has expired. Contact your admin for a new one.'
+    : params?.get('error') ? 'Login failed. Please try again.' : ''
+  const [error, setError] = useState(urlError)
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
