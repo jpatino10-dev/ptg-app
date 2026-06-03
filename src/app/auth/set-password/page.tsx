@@ -1,16 +1,47 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import Image from 'next/image'
 
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
 export default function SetPasswordPage() {
   const router = useRouter()
-  const [password, setPassword]     = useState('')
-  const [confirm, setConfirm]       = useState('')
-  const [loading, setLoading]       = useState(false)
-  const [error, setError]           = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm]   = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState('')
+  const [role, setRole]         = useState<string | null>(null)
+  const [ready, setReady]       = useState(false)
+
+  useEffect(() => {
+    // onAuthStateChange fires when the browser client detects the #access_token hash
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const r = session.user.user_metadata?.role || session.user.app_metadata?.role || null
+        setRole(r)
+        setReady(true)
+      }
+    })
+
+    // Also check if session already exists (returning visitor)
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) {
+        const r = data.session.user.user_metadata?.role || data.session.user.app_metadata?.role || null
+        setRole(r)
+        setReady(true)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const roleLabel = role === 'parent' ? 'parent' : role === 'admin' ? 'admin' : 'coach'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -20,11 +51,6 @@ export default function SetPasswordPage() {
     setLoading(true)
     setError('')
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
@@ -33,8 +59,28 @@ export default function SetPasswordPage() {
       return
     }
 
-    // Redirect to coach portal
-    router.push('/coach')
+    // Clear the must_reset_password flag
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('profiles').update({ must_reset_password: false }).eq('id', user.id)
+    }
+
+    if (role === 'parent') router.push('/parent')
+    else if (role === 'admin') router.push('/admin')
+    else router.push('/coach')
+  }
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="w-full max-w-sm text-center">
+          <div className="flex justify-center mb-8">
+            <Image src="/logo.png" alt="PTG" width={64} height={64} />
+          </div>
+          <p className="text-zinc-400 text-sm">Verifying your invite link...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -48,7 +94,9 @@ export default function SetPasswordPage() {
           <h1 className="text-2xl font-black text-[#cee800] tracking-widest text-center mb-1">
             WELCOME TO PTG
           </h1>
-          <p className="text-zinc-400 text-sm text-center mb-6">Set a password to activate your coach account.</p>
+          <p className="text-zinc-400 text-sm text-center mb-6">
+            Set a password to activate your {roleLabel} account.
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes
-  if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/auth/') || pathname.startsWith('/book') || pathname.startsWith('/order-shirt') || pathname.startsWith('/api/book/') || pathname.startsWith('/api/group-slots')) {
+  if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/auth/') || pathname.startsWith('/book') || pathname.startsWith('/order-shirt') || pathname.startsWith('/api/book/') || pathname.startsWith('/api/group-slots') || pathname.startsWith('/api/cron/')) {
     return supabaseResponse
   }
 
@@ -37,9 +37,14 @@ export async function middleware(request: NextRequest) {
   // Role-based routing
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, must_reset_password')
     .eq('id', user.id)
     .single()
+
+  // Force password reset before accessing any protected route
+  if (profile?.must_reset_password && !pathname.startsWith('/auth/')) {
+    return NextResponse.redirect(new URL('/auth/set-password', request.url))
+  }
 
   const role = profile?.role
   const isAdmin     = role === 'admin'
