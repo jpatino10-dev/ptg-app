@@ -26,33 +26,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Email, name, and password required' }, { status: 400 })
   }
 
-  // Check if user already exists via profiles table
-  const { data: existingProfile } = await admin
-    .from('profiles')
-    .select('id')
-    .eq('email', email)
-    .maybeSingle()
-
   let userId: string
 
-  if (existingProfile?.id) {
-    // Update existing user's password and role
+  // Try to create the user first
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email,
+    password: temp_password,
+    email_confirm: true,
+    user_metadata: { full_name, role },
+  })
+
+  if (createError) {
+    // User already exists — find them and update password + role
+    if (!createError.message.toLowerCase().includes('already')) {
+      return NextResponse.json({ error: createError.message }, { status: 500 })
+    }
+    const { data: list } = await admin.auth.admin.listUsers({ perPage: 1000, page: 1 })
+    const existing = list?.users?.find(u => u.email === email)
+    if (!existing) return NextResponse.json({ error: 'Could not find existing user' }, { status: 500 })
+
     const { data: updated, error: updateError } = await admin.auth.admin.updateUserById(
-      existingProfile.id,
+      existing.id,
       { password: temp_password, email_confirm: true, user_metadata: { full_name, role } }
     )
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
     userId = updated.user.id
   } else {
-    // Create new user
-    const { data, error: createError } = await admin.auth.admin.createUser({
-      email,
-      password: temp_password,
-      email_confirm: true,
-      user_metadata: { full_name, role },
-    })
-    if (createError) return NextResponse.json({ error: createError.message }, { status: 500 })
-    userId = data.user.id
+    userId = created.user.id
   }
 
   await admin.from('profiles').upsert({
