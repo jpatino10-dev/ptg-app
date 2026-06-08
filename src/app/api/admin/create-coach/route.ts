@@ -58,13 +58,13 @@ export async function POST(req: NextRequest) {
   // Try update first, insert if no row exists
   const { data: updatedRows, error: updateErr } = await admin
     .from('profiles')
-    .update({ full_name, role, must_reset_password: true })
+    .update({ full_name, role })
     .eq('id', userId)
     .select('id')
 
   if (updateErr || !updatedRows?.length) {
     const { error: insertErr } = await admin.from('profiles').insert({
-      id: userId, full_name, role, must_reset_password: true,
+      id: userId, full_name, role,
     })
     if (insertErr) return NextResponse.json({ error: `Profile save failed: ${insertErr.message}` }, { status: 500 })
   }
