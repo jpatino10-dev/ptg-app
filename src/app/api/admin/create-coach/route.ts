@@ -26,28 +26,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Email, name, and password required' }, { status: 400 })
   }
 
-  // Find and delete any existing user with this email via profiles table
+  // Check if user already exists via profiles table
   const { data: existingProfile } = await admin
     .from('profiles')
     .select('id')
     .eq('email', email)
     .maybeSingle()
 
+  let userId: string
+
   if (existingProfile?.id) {
-    await admin.auth.admin.deleteUser(existingProfile.id)
+    // Update existing user's password and role
+    const { data: updated, error: updateError } = await admin.auth.admin.updateUserById(
+      existingProfile.id,
+      { password: temp_password, email_confirm: true, user_metadata: { full_name, role } }
+    )
+    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+    userId = updated.user.id
+  } else {
+    // Create new user
+    const { data, error: createError } = await admin.auth.admin.createUser({
+      email,
+      password: temp_password,
+      email_confirm: true,
+      user_metadata: { full_name, role },
+    })
+    if (createError) return NextResponse.json({ error: createError.message }, { status: 500 })
+    userId = data.user.id
   }
 
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    password: temp_password,
-    email_confirm: true,
-    user_metadata: { full_name, role },
-  })
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
   await admin.from('profiles').upsert({
-    id: data.user.id,
+    id: userId,
     email,
     full_name,
     role,
