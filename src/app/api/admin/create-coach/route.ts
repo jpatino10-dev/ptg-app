@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const admin = await verifyAdmin()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { email, full_name, temp_password } = await req.json()
+  const { email, full_name, temp_password, role = 'coach' } = await req.json()
   if (!email || !full_name || !temp_password) {
     return NextResponse.json({ error: 'Email, name, and password required' }, { status: 400 })
   }
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     email,
     password: temp_password,
     email_confirm: true,
-    user_metadata: { full_name, role: 'coach' },
+    user_metadata: { full_name, role },
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     id: data.user.id,
     email,
     full_name,
-    role: 'coach',
+    role,
     must_reset_password: true,
   }, { onConflict: 'id' })
 

@@ -8,12 +8,13 @@ export default function InviteCoachForm({ onAdded }: { onAdded?: () => void }) {
   const [name, setName]     = useState('')
   const [email, setEmail]   = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole]     = useState<'coach' | 'director'>('coach')
   const [saving, setSaving] = useState(false)
   const [done, setDone]     = useState(false)
   const [error, setError]   = useState('')
 
   function reset() {
-    setName(''); setEmail(''); setPassword(''); setError(''); setDone(false); setTab('account')
+    setName(''); setEmail(''); setPassword(''); setError(''); setDone(false); setTab('account'); setRole('coach')
   }
 
   async function submit(e: React.FormEvent) {
@@ -36,7 +37,7 @@ export default function InviteCoachForm({ onAdded }: { onAdded?: () => void }) {
     const res = await fetch('/api/admin/create-coach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, full_name: name, temp_password: password }),
+      body: JSON.stringify({ email, full_name: name, temp_password: password, role }),
     })
     const data = await res.json()
     if (res.ok) { setDone(true); onAdded?.() }
@@ -111,6 +112,18 @@ export default function InviteCoachForm({ onAdded }: { onAdded?: () => void }) {
                       <input required value={password} onChange={e => setPassword(e.target.value)} placeholder="e.g. PTG2026"
                         className="mt-1 w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#cee800]" />
                       <p className="text-zinc-600 text-xs mt-1">You&apos;ll see this after so you can text it to them.</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Role</label>
+                      <div className="flex gap-2 mt-1">
+                        {(['coach', 'director'] as const).map(r => (
+                          <button key={r} type="button" onClick={() => setRole(r)}
+                            className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition capitalize ${role === r ? 'bg-[#cee800] text-black border-[#cee800]' : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500'}`}>
+                            {r}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-zinc-600 text-xs mt-1">Director gets full calendar access, no financial data.</p>
                     </div>
                   </>
                 )}
