@@ -353,7 +353,6 @@ function SessionDetail({ booking, onClose, onEdit, onDelete }: {
             ['Status',   booking.status],
             ['Location',  booking.location],
             ['Notes',    booking.notes],
-            ['Price',    booking.price ? '$'+booking.price : null],
           ] as [string,string|null][]).filter(([,v]) => v).map(([k,v]) => (
             <div key={k} className="flex justify-between gap-4">
               <span className="text-zinc-400 shrink-0">{k}</span>
