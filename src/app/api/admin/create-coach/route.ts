@@ -26,11 +26,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Email, name, and password required' }, { status: 400 })
   }
 
-  // Delete any existing user with this email so we start clean
-  const { data: existing } = await admin.auth.admin.listUsers()
-  const existingUser = existing?.users?.find(u => u.email === email)
-  if (existingUser) {
-    await admin.auth.admin.deleteUser(existingUser.id)
+  // Find and delete any existing user with this email via profiles table
+  const { data: existingProfile } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (existingProfile?.id) {
+    await admin.auth.admin.deleteUser(existingProfile.id)
   }
 
   const { data, error } = await admin.auth.admin.createUser({
