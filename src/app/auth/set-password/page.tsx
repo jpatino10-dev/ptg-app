@@ -51,23 +51,30 @@ export default function SetPasswordPage() {
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.updateUser({ password })
+    try {
+      const { error } = await supabase.auth.updateUser({ password })
 
-    if (error) {
-      setError(error.message)
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+        return
+      }
+
+      // Clear the must_reset_password flag — best effort, don't block on failure
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await supabase.from('profiles').update({ must_reset_password: false }).eq('id', user.id)
+        }
+      } catch { /* non-blocking */ }
+
+      if (role === 'director' || role === 'admin') router.push('/admin')
+      else if (role === 'coach') router.push('/coach')
+      else router.push('/parent')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
       setLoading(false)
-      return
     }
-
-    // Clear the must_reset_password flag
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase.from('profiles').update({ must_reset_password: false }).eq('id', user.id)
-    }
-
-    if (role === 'parent') router.push('/parent')
-    else if (role === 'admin') router.push('/admin')
-    else router.push('/coach')
   }
 
   if (!ready) {
