@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 
-const SessionReportModal = dynamic(() => import('@/components/SessionReportModal'), { ssr: false })
+const SessionReportModal    = dynamic(() => import('@/components/SessionReportModal'),    { ssr: false })
+const CoachNewSessionModal  = dynamic(() => import('@/components/CoachNewSessionModal'),  { ssr: false })
 
 type Session = {
   id: string; date: string; hour: string; coach: string; type: string
@@ -173,8 +174,9 @@ export default function CoachSchedulePage() {
   const [view, setView]           = useState<'list' | 'week' | 'month'>('week')
   const [listTab, setListTab]     = useState<'upcoming' | 'past'>('upcoming')
   const [anchor, setAnchor]       = useState(new Date())
-  const [selected, setSelected]   = useState<Session | null>(null)
-  const [reportSession, setReportSession] = useState<Session | null>(null)
+  const [selected, setSelected]     = useState<Session | null>(null)
+  const [showNewSession, setShowNewSession] = useState(false)
+  const [reportSession, setReportSession]   = useState<Session | null>(null)
   const [reportsExist, setReportsExist]   = useState<Set<string>>(new Set())
   const [marking, setMarking]     = useState(false)
 
@@ -228,8 +230,13 @@ export default function CoachSchedulePage() {
           <Link href="/coach" className="text-zinc-500 hover:text-white text-sm">← Dashboard</Link>
           <h1 className="text-2xl font-black text-[#cee800] tracking-widest">MY SCHEDULE</h1>
 
+          <button onClick={() => setShowNewSession(true)}
+            className="ml-auto px-4 py-1.5 bg-[#cee800] text-black font-black text-sm rounded-lg hover:bg-[#d4f030] transition">
+            + New Session
+          </button>
+
           {/* View tabs */}
-          <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 ml-auto">
+          <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-0.5">
             {(['week', 'month', 'list'] as const).map(v => (
               <button key={v} onClick={() => setView(v)}
                 className={`px-3 py-1 rounded-md text-sm font-semibold capitalize transition ${view === v ? 'bg-[#cee800] text-black' : 'text-zinc-400 hover:text-white'}`}>
@@ -340,6 +347,16 @@ export default function CoachSchedulePage() {
           onClose={() => setSelected(null)}
           onMarkComplete={() => markComplete(selected.id)}
           marking={marking}
+        />
+      )}
+
+      {showNewSession && (
+        <CoachNewSessionModal
+          onClose={() => setShowNewSession(false)}
+          onCreated={() => {
+            setShowNewSession(false)
+            fetch('/api/coach/sessions').then(r => r.json()).then(setSessions)
+          }}
         />
       )}
 

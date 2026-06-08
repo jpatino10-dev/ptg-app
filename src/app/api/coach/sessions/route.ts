@@ -58,3 +58,30 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(sessions || [])
 }
+
+export async function POST(req: NextRequest) {
+  const ctx = await verifyCoach()
+  if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { client, type, date, hour, duration, notes, location } = await req.json()
+  if (!client || !date || !hour) return NextResponse.json({ error: 'Client, date and time required' }, { status: 400 })
+
+  const { error } = await ctx.service.from('bookings').insert({
+    id:               crypto.randomUUID(),
+    client,
+    player_name:      client,
+    coach:            ctx.fullName,
+    type:             type || 'individual',
+    date,
+    hour,
+    duration_minutes: duration || 60,
+    notes:            notes || null,
+    location:         location || null,
+    status:           'confirmed',
+    source:           'coach',
+    is_group_slot:    false,
+  })
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
