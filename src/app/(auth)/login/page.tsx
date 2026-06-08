@@ -41,7 +41,7 @@ export default function LoginPage() {
       .single()
 
     const role = profile?.role
-    if (role === 'admin') router.push('/admin')
+    if (role === 'admin' || role === 'director') router.push('/admin')
     else if (role === 'coach') router.push('/coach')
     else router.push('/parent')
   }
