@@ -152,7 +152,7 @@ export default function CoachDashboard() {
         {/* Nav cards */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           {[
-            { title: 'My Schedule', desc: 'Upcoming & past sessions', href: '/coach/schedule', color: '#cee800' },
+            { title: 'My Schedule', desc: 'Calendar & session list', href: '/coach/schedule', color: '#cee800' },
             { title: 'My Players', desc: 'Roster and training notes', href: '/coach/players', color: '#00e5ff' },
           ].map(({ title, desc, href, color }) => (
             <Link key={title} href={href}
