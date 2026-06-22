@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PTG Rec · Week 1 Session Plan</title>
+  <style>
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+      --color-text-primary:    #111827;
+      --color-text-secondary:  #6B7280;
+      --color-text-tertiary:   #9CA3AF;
+      --color-text-info:       #1D4ED8;
+      --color-text-success:    #15803D;
+      --color-text-warning:    #B45309;
+      --color-text-danger:     #B91C1C;
+
+      --color-background-primary:   #FFFFFF;
+      --color-background-secondary: #F3F4F6;
+      --color-background-info:      #EFF6FF;
+      --color-background-success:   #F0FDF4;
+      --color-background-warning:   #FFFBEB;
+      --color-background-danger:    #FEF2F2;
+
+      --color-border-secondary: #D1D5DB;
+      --color-border-tertiary:  #E5E7EB;
+      --color-border-info:      #93C5FD;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      background: #F9FAFB;
+      color: var(--color-text-primary);
+      min-height: 100vh;
+    }
+
+    /* ── Top nav ── */
+    .nav {
+      background: #111827;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav a {
+      color: #9CA3AF;
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .nav a:hover { color: #fff; }
+    .nav-sep { color: #4B5563; font-size: 13px; }
+    .nav-current { color: #F9FAFB; font-size: 13px; }
+    .nav-logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: #F97316;
+      text-decoration: none;
+      margin-right: 4px;
+    }
+
+    /* ── Page layout ── */
+    .page {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 28px 16px 48px;
+    }
+
+    /* ── Header ── */
+    .header { text-align: center; margin-bottom: 32px; }
+    .badge {
+      display: inline-block;
+      background: #FFF7ED;
+      color: #C2410C;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+      letter-spacing: 0.04em;
+      border: 1px solid #FED7AA;
+    }
+    .header h1 { font-size: 24px; font-weight: 600; margin-bottom: 6px; }
+    .header .sub { font-size: 14px; color: var(--color-text-secondary); }
+
+    /* ── Station card ── */
+    .station {
+      background: var(--color-background-primary);
+      border: 1px solid var(--color-border-tertiary);
+      border-radius: 14px;
+      margin-bottom: 20px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    .station-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--color-border-tertiary);
+    }
+    .station-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .station-title { font-size: 16px; font-weight: 600; flex: 1; }
+    .station-time {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      background: var(--color-background-secondary);
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+
+    .station-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .diagram-area {
+      padding: 16px;
+      border-right: 1px solid var(--color-border-tertiary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-background-secondary);
+    }
+    .rules-area { padding: 16px; }
+    .rules-area h4 {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 0 0 10px;
+    }
+    .rule-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .rule-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+
+    /* Progression pills */
+    .prog-label {
+      font-size: 11px;
+      color: var(--color-text-secondary);
+      margin: 12px 0 6px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .prog-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .prog-pill {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      border: 1px solid var(--color-border-secondary);
+      color: var(--color-text-secondary);
+    }
+    .prog-pill.active {
+      background: var(--color-background-success);
+      color: var(--color-text-success);
+      border-color: transparent;
+      font-weight: 500;
+    }
+
+    /* Alert strips */
+    .no-count {
+      background: var(--color-background-danger);
+      color: var(--color-text-danger);
+      font-size: 12px;
+      padding: 8px 14px;
+      margin: 0 0 0 0;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      border-top: 1px solid #FECACA;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 540px) {
+      .station-body { grid-template-columns: 1fr; }
+      .diagram-area {
+        border-right: none;
+        border-bottom: 1px solid var(--color-border-tertiary);
+      }
+      .station-title { font-size: 15px; }
+      .header h1 { font-size: 20px; }
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--color-text-tertiary);
+      margin-top: 12px;
+    }
+    .footer a { color: var(--color-text-tertiary); text-decoration: none; }
+    .footer a:hover { color: var(--color-text-secondary); }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a class="nav-logo" href="/">PTG</a>
+    <span class="nav-sep">/</span>
+    <a href="/sessions">Sessions</a>
+    <span class="nav-sep">/</span>
+    <span class="nav-current">Rec · Week 1</span>
+  </nav>
+
+  <div class="page">
+    <div class="header">
+      <div class="badge">PTG · Rec · Week 1</div>
+      <h1>Station-Based Session Plan</h1>
+      <div class="sub">4 stations &middot; 7–8 min each &middot; Rotate on coach's signal</div>
+    </div>
+
+    <!-- STATION 1: PASSING -->
+    <div class="station">
+      <div class="station-header">
+        <div class="station-num" style="background:var(--color-background-info);color:var(--color-text-info);">1</div>
+        <div class="station-title">Passing — Inside of foot</div>
+        <div class="station-time">2 &times; 30 s rounds</div>
+      </div>
+      <div class="station-body">
+        <div class="diagram-area">
+          <svg width="240" height="150" viewBox="0 0 240 150" role="img" aria-label="Passing drill diagram">
+            <defs>
+              <marker id="a1f" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </marker>
+              <marker id="a1r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </marker>
+            </defs>
+            <text x="120" y="13" text-anchor="middle" font-size="10" fill="var(--color-text-tertiary)" font-family="var(--font-sans)">≈ 10 yards apart</text>
+            <circle cx="28" cy="75" r="14" fill="var(--color-background-info)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="28" y="79" text-anchor="middle" font-size="12" font-weight="500" fill="var(--color-text-info)" font-family="var(--font-sans)">A</text>
+            <circle cx="212" cy="75" r="14" fill="var(--color-background-success)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="212" y="79" text-anchor="middle" font-size="12" font-weight="500" fill="var(--color-text-success)" font-family="var(--font-sans)">B</text>
+            <polygon points="120,46 113,64 127,64" fill="#EF9F27" opacity="0.9"/>
+            <rect x="111" y="62" width="18" height="3" rx="1" fill="#BA7517"/>
+            <polygon points="120,104 113,86 127,86" fill="#EF9F27" opacity="0.9"/>
+            <rect x="111" y="84" width="18" height="3" rx="1" fill="#BA7517"/>
+            <line x1="43" y1="71" x2="197" y2="71" stroke="var(--color-border-info)" stroke-width="2" marker-end="url(#a1f)"/>
+            <text x="78" y="64" font-size="9" fill="var(--color-text-info)" font-family="var(--font-sans)">A → B</text>
+            <line x1="197" y1="79" x2="43" y2="79" stroke="#6EE7B7" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#a1r)"/>
+            <text x="148" y="94" font-size="9" fill="var(--color-text-success)" font-family="var(--font-sans)">B → A</text>
+          </svg>
+        </div>
+        <div class="rules-area">
+          <h4>Setup</h4>
+          <div class="rule-item">
+            <div class="rule-dot" style="background:var(--color-text-secondary)"></div>
+            <span>Partners stand 10 yards apart with a small gate (2 cones) between them</span>
+          </div>
+          <div class="prog-label">Progression</div>
+          <div class="prog-row">
+            <div class="prog-pill active">① Unlimited touches</div>
+            <div class="prog-pill">② 2-touch (R)</div>
+            <div class="prog-pill">③ 2-touch (L)</div>
+            <div class="prog-pill">④ 1-touch (closer)</div>
+          </div>
+          <div class="rule-item" style="margin-top:10px">
+            <div class="rule-dot" style="background:#EF9F27"></div>
+            <span><strong>+1 pt</strong> for every pass through the gate</span>
+          </div>
+        </div>
+      </div>
+      <div class="no-count">⚠️ Don't count if player takes too many touches or misses the gate</div>
+    </div>
+
+    <!-- STATION 2: BALL MASTERY -->
+    <div class="station">
+      <div class="station-header">
+        <div class="station-num" style="background:var(--color-background-success);color:var(--color-text-success);">2</div>
+        <div class="station-title">Ball Mastery</div>
+        <div class="station-time">2 &times; 30 s rounds</div>
+      </div>
+      <div class="station-body">
+        <div class="diagram-area">
+          <svg width="220" height="230" viewBox="0 0 220 230" role="img" aria-label="Ball mastery drill diagram">
+            <line x1="30" y1="18" x2="90" y2="18" stroke="var(--color-border-tertiary)" stroke-width="0.5" stroke-dasharray="3 2"/>
+            <line x1="30" y1="16" x2="30" y2="20" stroke="var(--color-border-tertiary)" stroke-width="0.8"/>
+            <line x1="90" y1="16" x2="90" y2="20" stroke="var(--color-border-tertiary)" stroke-width="0.8"/>
+            <text x="60" y="14" text-anchor="middle" font-size="8" fill="var(--color-text-tertiary)" font-family="var(--font-sans)">5 yds</text>
+            <line x1="90" y1="18" x2="150" y2="18" stroke="var(--color-border-tertiary)" stroke-width="0.5" stroke-dasharray="3 2"/>
+            <line x1="150" y1="16" x2="150" y2="20" stroke="var(--color-border-tertiary)" stroke-width="0.8"/>
+            <text x="120" y="14" text-anchor="middle" font-size="8" fill="var(--color-text-tertiary)" font-family="var(--font-sans)">5 yds</text>
+            <line x1="170" y1="62" x2="170" y2="132" stroke="var(--color-border-tertiary)" stroke-width="0.5" stroke-dasharray="3 2"/>
+            <line x1="168" y1="62" x2="172" y2="62" stroke="var(--color-border-tertiary)" stroke-width="0.8"/>
+            <line x1="168" y1="132" x2="172" y2="132" stroke="var(--color-border-tertiary)" stroke-width="0.8"/>
+            <text x="185" y="100" text-anchor="middle" font-size="8" fill="var(--color-text-tertiary)" font-family="var(--font-sans)">5 yds</text>
+            <!-- Row 1 -->
+            <polygon points="30,28 24,44 36,44" fill="#EF9F27" opacity="0.9"/><rect x="22" y="42" width="16" height="3" rx="1" fill="#BA7517"/>
+            <circle cx="30" cy="53" r="3.5" fill="var(--color-text-secondary)" opacity="0.7"/>
+            <circle cx="30" cy="66" r="12" fill="var(--color-background-success)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="30" y="70" text-anchor="middle" font-size="9" font-weight="500" fill="var(--color-text-success)" font-family="var(--font-sans)">P1</text>
+            <polygon points="90,28 84,44 96,44" fill="#EF9F27" opacity="0.9"/><rect x="82" y="42" width="16" height="3" rx="1" fill="#BA7517"/>
+            <circle cx="90" cy="53" r="3.5" fill="var(--color-text-secondary)" opacity="0.7"/>
+            <circle cx="90" cy="66" r="12" fill="var(--color-background-success)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="90" y="70" text-anchor="middle" font-size="9" font-weight="500" fill="var(--color-text-success)" font-family="var(--font-sans)">P2</text>
+            <polygon points="150,28 144,44 156,44" fill="#EF9F27" opacity="0.9"/><rect x="142" y="42" width="16" height="3" rx="1" fill="#BA7517"/>
+            <circle cx="150" cy="53" r="3.5" fill="var(--color-text-secondary)" opacity="0.7"/>
+            <circle cx="150" cy="66" r="12" fill="var(--color-background-success)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="150" y="70" text-anchor="middle" font-size="9" font-weight="500" fill="var(--color-text-success)" font-family="var(--font-sans)">P3</text>
+            <!-- Row 2 -->
+            <polygon points="30,98 24,114 36,114" fill="#EF9F27" opacity="0.9"/><rect x="22" y="112" width="16" height="3" rx="1" fill="#BA7517"/>
+            <circle cx="30" cy="123" r="3.5" fill="var(--color-text-secondary)" opacity="0.7"/>
+            <circle cx="30" cy="136" r="12" fill="var(--color-background-success)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="30" y="140" text-anchor="middle" font-size="9" font-weight="500" fill="var(--color-text-success)" font-family="var(--font-sans)">P4</text>
+            <polygon points="90,98 84,114 96,114" fill="#EF9F27" opacity="0.9"/><rect x="82" y="112" width="16" height="3" rx="1" fill="#BA7517"/>
+            <circle cx="90" cy="123" r="3.5" fill="var(--color-text-secondary)" opacity="0.7"/>
+            <circle cx="90" cy="136" r="12" fill="var(--color-background-success)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="90" y="140" text-anchor="middle" font-size="9" font-weight="500" fill="var(--color-text-success)" font-family="var(--font-sans)">P5</text>
+            <polygon points="150,98 144,114 156,114" fill="#EF9F27" opacity="0.9"/><rect x="142" y="112" width="16" height="3" rx="1" fill="#BA7517"/>
+            <circle cx="150" cy="123" r="3.5" fill="var(--color-text-secondary)" opacity="0.7"/>
+            <circle cx="150" cy="136" r="12" fill="var(--color-background-success)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="150" y="140" text-anchor="middle" font-size="9" font-weight="500" fill="var(--color-text-success)" font-family="var(--font-sans)">P6</text>
+            <!-- Legend -->
+            <circle cx="14" cy="172" r="5" fill="var(--color-background-success)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="24" y="176" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">player (all working)</text>
+            <polygon points="130,168 125,178 135,178" fill="#EF9F27" opacity="0.9"/>
+            <text x="141" y="176" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">cone</text>
+            <circle cx="14" cy="190" r="3.5" fill="var(--color-text-secondary)" opacity="0.7"/>
+            <text x="24" y="194" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">ball</text>
+          </svg>
+        </div>
+        <div class="rules-area">
+          <h4>5 Skills — pick your round</h4>
+          <div class="rule-item"><span style="font-size:12px;font-weight:600;color:var(--color-text-info);min-width:18px">①</span><span>Toe taps → advanced: dramatic tap to side (switching feet)</span></div>
+          <div class="rule-item"><span style="font-size:12px;font-weight:600;color:var(--color-text-info);min-width:18px">②</span><span>Croquetas → advanced: add outside foot touch</span></div>
+          <div class="rule-item"><span style="font-size:12px;font-weight:600;color:var(--color-text-info);min-width:18px">③</span><span>Push-pull R/L → advanced: both feet</span></div>
+          <div class="rule-item"><span style="font-size:12px;font-weight:600;color:var(--color-text-info);min-width:18px">④</span><span>Inside outside (B)</span></div>
+          <div class="rule-item"><span style="font-size:12px;font-weight:600;color:var(--color-text-info);min-width:18px">⑤</span><span>Juggling — bounce on ground, touch to start</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATION 3: DRIBBLING -->
+    <div class="station">
+      <div class="station-header">
+        <div class="station-num" style="background:var(--color-background-warning);color:var(--color-text-warning);">3</div>
+        <div class="station-title">Dribbling Course — finish with shot</div>
+        <div class="station-time">2 &times; 30 s rounds</div>
+      </div>
+      <div class="station-body">
+        <div class="diagram-area">
+          <svg width="220" height="420" viewBox="0 0 220 420" role="img" aria-label="Dribbling course diagram">
+            <defs>
+              <marker id="ad" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </marker>
+            </defs>
+            <!-- Group A goal -->
+            <rect x="10" y="14" width="70" height="20" rx="3" fill="none" stroke="var(--color-border-secondary)" stroke-width="1.5"/>
+            <text x="45" y="28" text-anchor="middle" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">GOAL</text>
+            <!-- Group A poles -->
+            <rect x="16" y="48" width="6" height="16" rx="1" fill="#EF9F27"/>
+            <rect x="68" y="86" width="6" height="16" rx="1" fill="#EF9F27"/>
+            <rect x="16" y="124" width="6" height="16" rx="1" fill="#EF9F27"/>
+            <rect x="68" y="162" width="6" height="16" rx="1" fill="#EF9F27"/>
+            <rect x="16" y="200" width="6" height="16" rx="1" fill="#EF9F27"/>
+            <rect x="68" y="238" width="6" height="16" rx="1" fill="#EF9F27"/>
+            <!-- Group A path -->
+            <path d="M45 285 L19 246 L71 208 L19 170 L71 132 L19 94 L71 56 L45 34" fill="none" stroke="#EF9F27" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#ad)"/>
+            <!-- Group A players -->
+            <circle cx="45" cy="298" r="12" fill="var(--color-background-warning)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="45" y="302" text-anchor="middle" font-size="9" font-weight="500" fill="var(--color-text-warning)" font-family="var(--font-sans)">P1</text>
+            <circle cx="45" cy="328" r="10" fill="var(--color-background-secondary)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="45" y="332" text-anchor="middle" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">P2</text>
+            <circle cx="45" cy="352" r="10" fill="var(--color-background-secondary)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="45" y="356" text-anchor="middle" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">P3</text>
+            <text x="45" y="376" text-anchor="middle" font-size="9" font-weight="500" fill="var(--color-text-secondary)" font-family="var(--font-sans)">Group A</text>
+            <!-- Group B goal -->
+            <rect x="140" y="14" width="70" height="20" rx="3" fill="none" stroke="var(--color-border-secondary)" stroke-width="1.5"/>
+            <text x="175" y="28" text-anchor="middle" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">GOAL</text>
+            <!-- Group B poles -->
+            <rect x="146" y="48" width="6" height="16" rx="1" fill="#EF9F27"/>
+            <rect x="198" y="86" width="6" height="16" rx="1" fill="#EF9F27"/>
+            <rect x="146" y="124" width="6" height="16" rx="1" fill="#EF9F27"/>
+            <rect x="198" y="162" width="6" height="16" rx="1" fill="#EF9F27"/>
+            <rect x="146" y="200" width="6" height="16" rx="1" fill="#EF9F27"/>
+            <rect x="198" y="238" width="6" height="16" rx="1" fill="#EF9F27"/>
+            <!-- Group B path -->
+            <path d="M175 285 L149 246 L201 208 L149 170 L201 132 L149 94 L201 56 L175 34" fill="none" stroke="#EF9F27" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#ad)"/>
+            <!-- Group B players -->
+            <circle cx="175" cy="298" r="12" fill="var(--color-background-warning)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="175" y="302" text-anchor="middle" font-size="9" font-weight="500" fill="var(--color-text-warning)" font-family="var(--font-sans)">P4</text>
+            <circle cx="175" cy="328" r="10" fill="var(--color-background-secondary)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="175" y="332" text-anchor="middle" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">P5</text>
+            <circle cx="175" cy="352" r="10" fill="var(--color-background-secondary)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="175" y="356" text-anchor="middle" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">P6</text>
+            <text x="175" y="376" text-anchor="middle" font-size="9" font-weight="500" fill="var(--color-text-secondary)" font-family="var(--font-sans)">Group B</text>
+            <!-- Legend -->
+            <rect x="58" y="392" width="6" height="10" rx="1" fill="#EF9F27"/>
+            <text x="70" y="401" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">pole</text>
+            <circle cx="108" cy="397" r="5" fill="var(--color-background-warning)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="118" y="401" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">working</text>
+            <circle cx="165" cy="397" r="5" fill="var(--color-background-secondary)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="175" y="401" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">waiting</text>
+          </svg>
+        </div>
+        <div class="rules-area">
+          <h4>Setup</h4>
+          <div class="rule-item"><div class="rule-dot" style="background:#EF9F27"></div><span>2 groups of 3 players, each with 6 poles in a zigzag</span></div>
+          <div class="rule-item"><div class="rule-dot" style="background:#EF9F27"></div><span>P1/P4 dribble bottom to top through the poles and finish with a shot on goal</span></div>
+          <div class="rule-item"><div class="rule-dot" style="background:#EF9F27"></div><span>P2/P3 and P5/P6 wait their turn, then rotate</span></div>
+          <h4 style="margin-top:14px;">Dribbling moves at each pole</h4>
+          <div class="rule-item"><div class="rule-dot" style="background:#EF9F27"></div><span>All right foot</span></div>
+          <div class="rule-item"><div class="rule-dot" style="background:#EF9F27"></div><span>All left foot</span></div>
+          <div class="rule-item"><div class="rule-dot" style="background:#EF9F27"></div><span>Outside foot, then around</span></div>
+          <div class="rule-item"><div class="rule-dot" style="background:#EF9F27"></div><span>Body feint at each pole</span></div>
+          <div class="rule-item"><div class="rule-dot" style="background:#EF9F27"></div><span>Sole roll at each pole</span></div>
+          <div style="margin-top:10px;background:var(--color-background-danger);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--color-text-danger);border:1px solid #FECACA;">⚡ Competition: race Group A vs Group B — first to score wins!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATION 4: SHOOTING -->
+    <div class="station">
+      <div class="station-header">
+        <div class="station-num" style="background:var(--color-background-danger);color:var(--color-text-danger);">4</div>
+        <div class="station-title">Shooting — finish with coach</div>
+        <div class="station-time">Continuous reps</div>
+      </div>
+      <div class="station-body">
+        <div class="diagram-area">
+          <svg width="220" height="200" viewBox="0 0 220 200" role="img" aria-label="Shooting drill diagram">
+            <defs>
+              <marker id="a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </marker>
+            </defs>
+            <rect x="75" y="12" width="70" height="22" rx="3" fill="none" stroke="var(--color-border-secondary)" stroke-width="2"/>
+            <text x="110" y="27" text-anchor="middle" font-size="9" fill="var(--color-text-secondary)" font-family="var(--font-sans)">GOAL</text>
+            <circle cx="110" cy="68" r="12" fill="var(--color-background-danger)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="110" y="72" text-anchor="middle" font-size="9" font-weight="500" fill="var(--color-text-danger)" font-family="var(--font-sans)">CO</text>
+            <circle cx="110" cy="85" r="4" fill="var(--color-text-secondary)" opacity="0.5"/>
+            <line x1="110" y1="56" x2="110" y2="35" stroke="#D05538" stroke-width="2" marker-end="url(#a4)"/>
+            <!-- Left line -->
+            <circle cx="48" cy="118" r="11" fill="var(--color-background-danger)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="48" y="122" text-anchor="middle" font-size="8" font-weight="500" fill="var(--color-text-danger)" font-family="var(--font-sans)">P1</text>
+            <circle cx="30" cy="142" r="9" fill="var(--color-background-secondary)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="30" y="146" text-anchor="middle" font-size="8" fill="var(--color-text-secondary)" font-family="var(--font-sans)">P2</text>
+            <circle cx="14" cy="162" r="9" fill="var(--color-background-secondary)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="14" y="166" text-anchor="middle" font-size="8" fill="var(--color-text-secondary)" font-family="var(--font-sans)">P3</text>
+            <!-- Right line -->
+            <circle cx="172" cy="118" r="11" fill="var(--color-background-danger)" stroke="var(--color-border-secondary)" stroke-width="1"/>
+            <text x="172" y="122" text-anchor="middle" font-size="8" font-weight="500" fill="var(--color-text-danger)" font-family="var(--font-sans)">P4</text>
+            <circle cx="190" cy="142" r="9" fill="var(--color-background-secondary)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="190" y="146" text-anchor="middle" font-size="8" fill="var(--color-text-secondary)" font-family="var(--font-sans)">P5</text>
+            <circle cx="206" cy="162" r="9" fill="var(--color-background-secondary)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="206" y="166" text-anchor="middle" font-size="8" fill="var(--color-text-secondary)" font-family="var(--font-sans)">P6</text>
+            <!-- Pass arrows -->
+            <path d="M57 110 Q82 92 103 78" fill="none" stroke="var(--color-border-info)" stroke-width="1.3" stroke-dasharray="4 2" marker-end="url(#a4)"/>
+            <path d="M163 110 Q138 92 117 78" fill="none" stroke="var(--color-border-info)" stroke-width="1.3" stroke-dasharray="4 2" marker-end="url(#a4)"/>
+            <!-- Back of line -->
+            <path d="M88 72 Q60 100 42 106" fill="none" stroke="var(--color-border-secondary)" stroke-width="1" stroke-dasharray="3 2" marker-end="url(#a4)"/>
+            <text x="52" y="185" text-anchor="middle" font-size="8" fill="var(--color-text-tertiary)" font-family="var(--font-sans)">back of line</text>
+            <!-- Legend -->
+            <circle cx="88" cy="196" r="5" fill="var(--color-background-danger)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="98" y="200" font-size="8" fill="var(--color-text-secondary)" font-family="var(--font-sans)">active</text>
+            <circle cx="138" cy="196" r="5" fill="var(--color-background-secondary)" stroke="var(--color-border-secondary)" stroke-width="0.8"/>
+            <text x="148" y="200" font-size="8" fill="var(--color-text-secondary)" font-family="var(--font-sans)">waiting</text>
+          </svg>
+        </div>
+        <div class="rules-area">
+          <h4>How it works</h4>
+          <div class="rule-item"><div class="rule-dot" style="background:#D05538"></div><span>2 lines: P1–P3 on the left, P4–P6 on the right</span></div>
+          <div class="rule-item"><div class="rule-dot" style="background:#D05538"></div><span>P1/P4 give the ball to coach, then make their run</span></div>
+          <div class="rule-item"><div class="rule-dot" style="background:#D05538"></div><span>Coach bounces/serves the ball back to shoot</span></div>
+          <div class="rule-item"><div class="rule-dot" style="background:#D05538"></div><span>Player shoots, returns to back of line — P2/P5 go next</span></div>
+          <div style="margin-top:12px;background:var(--color-background-secondary);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--color-text-secondary);border:1px solid var(--color-border-tertiary);">
+            <span style="font-weight:600">Coach tip:</span> vary the serve — bouncing pass, ground roll, air feed — to keep players adjusting.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <a href="/">trainatptg.com</a> &middot; PTG Recreational Program
+    </div>
+  </div>
+
+</body>
+</html>
